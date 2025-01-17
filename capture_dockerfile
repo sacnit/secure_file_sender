@@ -1,0 +1,5 @@
+FROM alpine:latest
+
+RUN apk add --no-cache tcpdump
+
+ENTRYPOINT ["tcpdump", "-i", "any", "-w", "/traffic_capture/traffic.pcap"]

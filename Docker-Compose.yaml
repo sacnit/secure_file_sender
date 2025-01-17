@@ -1,0 +1,27 @@
+services:
+  capture:
+    build:
+      context: .
+      dockerfile: capture_dockerfile
+    networks:
+      - p2p_network
+    volumes:
+      - ./traffic_capture:/traffic_capture
+  node_1:
+    build:
+      context: .
+      dockerfile: node_dockerfile
+    networks:
+      - p2p_network
+    command: ["./target/release/secure_file_sender", "--type", "ultrapeer"]
+  node_2:
+    build:
+      context: .
+      dockerfile: node_dockerfile
+    networks: 
+      - p2p_network
+    command: ["./target/release/secure_file_sender", "--type", "leaf", "--ultrapeer", "node_1"]
+
+networks:
+  p2p_network:
+    driver: bridge
