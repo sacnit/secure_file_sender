@@ -13,7 +13,7 @@ services:
       dockerfile: node_dockerfile
     networks:
       - p2p_network
-    command: ["./target/release/secure_file_sender", "--type", "ultrapeer"]
+    command: ["./target/release/secure_file_sender", "--type", "ultrapeer", "--ultrapeer", "self"]
   node_2:
     build:
       context: .
