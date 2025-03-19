@@ -10,5 +10,8 @@ Relies upon [**Tokio**](https://docs.rs/tokio/latest/tokio/) for mutlithreading
 
 
 ## Encryption
-
 [**Zamia TFHE**](https://docs.zama.ai/tfhe-rs) is a Full Homomorphic Encryption library for Rust supporting operations on both encrypted and plaintext data (Could be used for searching encrypted data)
+
+## Testing
+[**Docker**](https://www.docker.com/) allows for containers to be configured and ran with virtual networks, the testing environment setup through compose
+

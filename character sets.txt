@@ -1,0 +1,38 @@
+Partial characters ✓
+╴ 	╵ 	╶ 	╷ 	
+╸ 	╹ 	╺ 	╻
+Mixed characters (double) ✓
+╒ 	╓
+╕ 	╖
+╘ 	╙
+╛ 	╜
+╞ 	╟
+╡ 	╢
+╤ 	╥
+╧ 	╨
+╪ 	╫
+Mixed characters (bold) ✓
+╼ 	╾
+╽ 	╿
+┍ 	┎
+┑ 	┒
+┕ 	┖
+┙ 	┚
+┝ 	┞ 	┟ 	┠ 	┡ 	┢
+┥ 	┦ 	┧ 	┨ 	┩ 	┪
+┭ 	┮ 	┯ 	┰ 	┱ 	┲
+┵ 	┶ 	┷ 	┸ 	┹ 	┺
+┽ 	┾ 	┿ 	╀ 	╁ 	╂ 	╃ 	╄ 	╅ 	╆ 	╇ 	╈ 	╉ 	╊
+Single characters ✓
+─ 	│ 	┌ 	┐ 	└ 	┘ 	├ 	┤ 	┬ 	┴ 	┼
+Single characters (bold) ✓
+━ 	┃	┏ 	┓ 	┗ 	┛ 	┣ 	┫ 	┳ 	┻ 	╋
+Double characters ✓
+═ 	║ 	╔ 	╗ 	╚ 	╝ 	╠ 	╣ 	╦ 	╩ 	╬
+Special characters ✓
+╰ 	╭ 	╮ 	╯ 	╱ 	╲ 	╳
+Dashed characters ✓
+╌  	┄ 	┈	
+╍ 	┅ 	┉
+╎ 	┆ 	┊
+╏ 	┇ 	┋
