@@ -18,3 +18,4 @@ termsize = "0.1"
 tokio = { version = "1.43", features = ["full"] }
 tokio-stream = "0.1"
 crossterm = "0.28.1"
+signal-hook = "0.3.17"

@@ -1,8 +1,8 @@
 pub mod cli {
     use std::collections::HashMap;
-    
     extern crate termsize;
-
+    use crossterm::{cursor, execute, terminal::{Clear, ClearType}};
+    
 /// structure for defining a box character
 /// - up, down, left, right: 0 = single, 1 = double, 3 = bold
 /// - dashes: 0 = none, 2 = single, 3 = double, 4 = triple
@@ -15,6 +15,13 @@ pub struct BoxCharacterKey {
     pub right: u8,
     pub dashes: u8,
     pub special: bool,
+}
+
+/// structure for tracking elements on the terminal
+pub struct TerminalGrid {
+    pub width: u16,
+    pub height: u16,
+    grid: Vec<Vec<BoxCharacterKey>>
 }
 
 /// Creates the hashmap for box characters
@@ -176,8 +183,7 @@ fn create_box_character_map() -> HashMap<BoxCharacterKey, char> {
 ///  - `key_1` takes priority over `key_2` in terms of special property
 ///  - when bold lines (3) and double (2) are both present, double becomes bold
 ///  - improper combinations return a space character
-pub fn select_box_character(key_1: BoxCharacterKey, key_2: Option<BoxCharacterKey>) -> char {
-    let map = create_box_character_map();
+pub fn select_box_character(map: &HashMap<BoxCharacterKey, char>, key_1: BoxCharacterKey, key_2: Option<BoxCharacterKey>) -> char {
 
     let key_2 = key_2.unwrap_or(BoxCharacterKey {
         up: 0,
@@ -210,7 +216,8 @@ pub fn select_box_character(key_1: BoxCharacterKey, key_2: Option<BoxCharacterKe
 /// Tests the select_box_character function
 /// - prints all possible box characters
 /// - prints all possible combinations of box characters
-pub fn test_select_box_character() {
+pub fn _test_select_box_character() { // Passes ✓
+    let map = create_box_character_map();
     let mut seen: Vec<char> = Vec::new();
     let mut seen_combined: Vec<char> = Vec::new();
     for up in 0..=3 {
@@ -227,7 +234,7 @@ pub fn test_select_box_character() {
                                 dashes,
                                 special,
                             };
-                            let character = select_box_character(key_1, None);
+                            let character = select_box_character(&map, key_1, None);
                             if !seen.contains(&character){
                                 seen.push(character);
                             }
@@ -266,7 +273,7 @@ pub fn test_select_box_character() {
                                                         dashes: dashes_2,
                                                         special: special_2,
                                                     };
-                                                    let character = select_box_character(key_1.clone(), Some(key_2));
+                                                    let character = select_box_character(&map, key_1.clone(), Some(key_2));
                                                     if !seen_combined.contains(&character){
                                                         seen_combined.push(character);
                                                     }
@@ -283,6 +290,69 @@ pub fn test_select_box_character() {
         }
     }
     println!("{:?}{}", seen_combined, seen_combined.len());
+}
+
+/// Draw box
+pub fn draw_box(terminal: TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, style: u8) {
+    let map = create_box_character_map();
+    for row in row_start..row_end {
+        for column in column_start..column_end {
+            let mut key_1 = BoxCharacterKey {
+                up: 0,
+                down: 0,
+                left: 0,
+                right: 0,
+                dashes: 0,
+                special: false,
+            };
+            if row == row_start && column == column_start {
+                key_1.right = style;
+                key_1.down = style;
+            }
+            else if row == row_start && column == column_end - 1 {
+                key_1.left = style;
+                key_1.down = style;
+            }
+            else if row == row_start {
+                key_1.left = style;
+                key_1.right = style;
+            }
+            else if row == row_end - 1 && column == column_start {
+                key_1.right = style;
+                key_1.up = style;
+            }
+            else if row == row_end - 1 && column == column_end - 1 {
+                key_1.left = style;
+                key_1.up = style;
+            }
+            else if row == row_end - 1 {
+                key_1.left = style;
+                key_1.right = style;
+            }
+            else if column == column_start || column == column_end - 1 {
+                key_1.up = style;
+                key_1.down = style;
+            }
+            let character = select_box_character(&map, key_1, Some(terminal.grid[row as usize][column as usize].clone()));
+            execute!(std::io::stdout(), cursor::MoveTo(column, row)).unwrap();
+            print!("{}", character);
+        }
+        println!();
+    }
+}
+
+/// Initializes terminal
+pub fn initialize_terminal() -> TerminalGrid {
+    //execute!(std::io::stdout(), Clear(ClearType::All)).unwrap(); // Real nice effort chucklenuts now the screen looks fucky
+
+    let dimensions = termsize::get().unwrap();
+
+    let terminal = TerminalGrid {
+        width: dimensions.cols,
+        height: dimensions.rows,
+        grid: vec![vec![BoxCharacterKey { up: 0, down: 0, left: 0, right: 0, dashes: 0, special: false }; dimensions.cols.into()]; dimensions.rows.into()]
+    };
+    return terminal
 }
 
 }

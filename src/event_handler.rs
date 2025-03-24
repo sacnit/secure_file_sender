@@ -1,72 +1,44 @@
 pub mod event_handler {
-    // mvp - Mutex Value Pair is just a struct to reduce number of variables passed through to handle_events
-    pub struct MVP {
-        keep_running: bool,
-        keep_running_mutex: bool,
-        redraw_ui: bool,
-        redraw_ui_mutex: bool,
-        state: i32,
-        state_mutex: bool
+    use std::sync::{Arc, Mutex};
+
+    use signal_hook::consts::signal::SIGWINCH;
+    use signal_hook::iterator::Signals;
+
+    
+    /// Struct to track event flags
+    #[derive(Clone)]
+    pub struct EventFlags {
+        terminal_resized: bool,
     }
 
-    impl MVP {
+    impl EventFlags {
+        /// Constructor for EventFlags
         pub fn new() -> Self {
-            MVP { keep_running: true, keep_running_mutex: true, redraw_ui: true, redraw_ui_mutex: true, state: 0, state_mutex: true }
-        }
-        pub fn get_running(&mut self) -> i32 {
-            if self.keep_running_mutex {
-                self.keep_running_mutex = false;
-                let temp = self.keep_running;
-                self.keep_running_mutex = true;
-                if temp {return 1;} else {return 0;}
-            }
-            else {
-                return 3;
+            EventFlags {
+                terminal_resized: false,
             }
         }
-        pub fn _stop_running(&mut self) -> bool{
-            if self.keep_running_mutex {
-                self.keep_running_mutex = false;
-                self.keep_running = false;
-                self.keep_running_mutex = true;
-                return true;
-            }
-            return false;
+        /// Resets the terminal resize flag
+        pub fn reset_resize(&mut self) {
+            self.terminal_resized = false;
         }
-        pub fn _change_state(&mut self, new_state: i32) -> bool{
-            if self.state_mutex {
-                self.state_mutex = false;
-                self.state = new_state;
-                self.state_mutex = true;
-                return true;
-            }
-            return false;
+        /// Sets the terminal resize flag
+        pub fn set_resize(&mut self) {
+            self.terminal_resized = true;
         }
-        pub fn toggle_redraw(&mut self) -> bool {
-            if self.redraw_ui_mutex {
-                self.redraw_ui_mutex = false;
-                self.redraw_ui ^= true;
-                self.redraw_ui_mutex = true;
-            }
-            return false;
+        /// Returns the terminal resize flag
+        pub fn get_resize(&self) -> bool {
+            self.terminal_resized
         }
-        pub fn get_redraw(&mut self) -> bool {
-            if self.redraw_ui_mutex {
-                self.redraw_ui_mutex = false;
-                let temp = self.redraw_ui;
-                self.redraw_ui_mutex = true;
-                return temp;
+    }
+
+    /// Event loop for handling signals
+    pub async fn event_loop(flags: &mut Arc<Mutex<EventFlags>>) {
+        let mut signals = Signals::new(&[SIGWINCH]).unwrap();
+        for signal in signals.forever() {
+            if signal == SIGWINCH {
+                flags.lock().unwrap().set_resize();
             }
-            return false;
-        }
-        pub fn get_state(&mut self) -> i32 {
-            if self.state_mutex {
-                self.state_mutex = false;
-                let temp = self.state;
-                self.state_mutex = true;
-                return temp;
-            }
-            return 99;
         }
     }
 }
