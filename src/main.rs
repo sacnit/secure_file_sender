@@ -23,12 +23,14 @@ impl Drop for Cleanup {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _cleanup = Cleanup;
     let mut flags: Arc<Mutex<EventFlags>> = Arc::new(Mutex::new(EventFlags::new()));
+    flags.lock().unwrap().set_resize();
     execute!(std::io::stdout(), EnterAlternateScreen ).unwrap();
     execute!(std::io::stdout(), Hide).unwrap(); // Not supported by all terminals dipshit
 
     // Spawn the event loop as a separate task
+    let mut flags_clone = Arc::clone(&flags);
     let _event_handler = task::spawn(async move {
-        event_loop(&mut flags).await;
+        event_loop(&mut flags_clone).await;
     });
 
     loop {

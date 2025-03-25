@@ -337,13 +337,12 @@ pub fn draw_box(terminal: TerminalGrid, column_start: u16, column_end: u16, row_
             execute!(std::io::stdout(), cursor::MoveTo(column, row)).unwrap();
             print!("{}", character);
         }
-        println!();
     }
 }
 
 /// Initializes terminal
 pub fn initialize_terminal() -> TerminalGrid {
-    //execute!(std::io::stdout(), Clear(ClearType::All)).unwrap(); // Real nice effort chucklenuts now the screen looks fucky
+    execute!(std::io::stdout(), Clear(ClearType::All)).unwrap(); // Real nice effort chucklenuts now the screen looks fucky
 
     let dimensions = termsize::get().unwrap();
 
