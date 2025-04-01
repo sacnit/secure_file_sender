@@ -1,5 +1,5 @@
 pub mod cli {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, io::{stdout, Write}};
     extern crate termsize;
     use crossterm::{cursor, execute, terminal::{Clear, ClearType}};
     
@@ -183,7 +183,7 @@ fn create_box_character_map() -> HashMap<BoxCharacterKey, char> {
 ///  - `key_1` takes priority over `key_2` in terms of special property
 ///  - when bold lines (3) and double (2) are both present, double becomes bold
 ///  - improper combinations return a space character
-pub fn select_box_character(map: &HashMap<BoxCharacterKey, char>, key_1: BoxCharacterKey, key_2: Option<BoxCharacterKey>) -> char {
+pub fn select_box_character(map: &HashMap<BoxCharacterKey, char>, key_1: BoxCharacterKey, key_2: Option<BoxCharacterKey>) -> (char, BoxCharacterKey) {
 
     let key_2 = key_2.unwrap_or(BoxCharacterKey {
         up: 0,
@@ -210,7 +210,7 @@ pub fn select_box_character(map: &HashMap<BoxCharacterKey, char>, key_1: BoxChar
         if combined_key.right == 2 { combined_key.right = 3; }
     }
 
-    *map.get(&combined_key).unwrap_or(&' ')
+    (*map.get(&combined_key).unwrap_or(&' '), combined_key)
 }
 
 /// Tests the select_box_character function
@@ -235,8 +235,8 @@ pub fn _test_select_box_character() { // Passes ✓
                                 special,
                             };
                             let character = select_box_character(&map, key_1, None);
-                            if !seen.contains(&character){
-                                seen.push(character);
+                            if !seen.contains(&character.0){
+                                seen.push(character.0);
                             }
                         }
                     }
@@ -274,8 +274,8 @@ pub fn _test_select_box_character() { // Passes ✓
                                                         special: special_2,
                                                     };
                                                     let character = select_box_character(&map, key_1.clone(), Some(key_2));
-                                                    if !seen_combined.contains(&character){
-                                                        seen_combined.push(character);
+                                                    if !seen_combined.contains(&character.0){
+                                                        seen_combined.push(character.0);
                                                     }
                                                 }
                                             }
@@ -293,7 +293,7 @@ pub fn _test_select_box_character() { // Passes ✓
 }
 
 /// Draw box
-pub fn draw_box(terminal: TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, style: u8) {
+pub fn draw_box(terminal: &mut TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, style: u8) {
     let map = create_box_character_map();
     for row in row_start..row_end {
         for column in column_start..column_end {
@@ -335,14 +335,107 @@ pub fn draw_box(terminal: TerminalGrid, column_start: u16, column_end: u16, row_
             }
             let character = select_box_character(&map, key_1, Some(terminal.grid[row as usize][column as usize].clone()));
             execute!(std::io::stdout(), cursor::MoveTo(column, row)).unwrap();
-            print!("{}", character);
+            print!("{}", character.0);
+            terminal.grid[row as usize][column as usize] = character.1;
         }
+    }
+    stdout().flush().expect("Failed to flush stdout");
+}
+
+/// Draw line
+pub fn draw_line(terminal: &mut TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, style: u8) {
+    let map = create_box_character_map();
+    // Vertical
+    if column_start == column_end {
+        for row in row_start..row_end {
+            let mut key_1 = BoxCharacterKey {
+                up: style,
+                down: style,
+                left: 0,
+                right: 0,
+                dashes: 0,
+                special: false,
+            };
+            if row == row_start {
+                key_1.up = 0;
+            }
+            else if row == row_end - 1 {
+                key_1.down = 0;
+            }
+            let key_2 = Some(terminal.grid[row as usize][column_start as usize].clone());
+            let character = select_box_character(&map, key_1, key_2);
+            execute!(std::io::stdout(), cursor::MoveTo(column_start, row)).unwrap();
+            print!("{}", character.0);
+            terminal.grid[row as usize][column_start as usize] = character.1;
+        }
+    }
+    // Horizontal
+    else if row_start == row_end {
+        for column in column_start..column_end {
+            let mut key_1 = BoxCharacterKey {
+                up: 0,
+                down: 0,
+                left: style,
+                right: style,
+                dashes: 0,
+                special: false,
+            };
+            if column == column_start {
+                key_1.left = 0;
+            }
+            else if column == column_end - 1 {
+                key_1.right = 0;
+            }
+            let key_2 = Some(terminal.grid[row_start as usize][column as usize].clone());
+            let character = select_box_character(&map, key_1, key_2);
+            execute!(std::io::stdout(), cursor::MoveTo(column, row_start)).unwrap();
+            print!("{}", character.0);
+            terminal.grid[row_start as usize][column as usize] = character.1;
+        }
+    }
+    stdout().flush().expect("Failed to flush stdout");
+}
+
+fn draw_text(terminal: &mut TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, text: &str) {
+    let text_length = text.len() as u16;
+    let text_segments = text.split(' ');
+    let realestate_row = row_end - row_start;
+    let realestate_column = column_end - column_start;
+    let mut printable: Vec<String> = vec!["".to_string(),];
+
+    // If the text will fit fine
+    if text_length < realestate_row {
+        execute!(std::io::stdout(), cursor::MoveTo(column_start, row_start)).unwrap();
+        print!("{}", text);
+    }
+    // If the text will not fit on one row...
+    // Format it
+    else {
+        let mut row = 0;
+        let mut running_total = 0;
+        for segment in text_segments {
+            running_total += segment.len() + 1;
+            if running_total > realestate_row.into() {
+                running_total = segment.len() + 1; // The `+ 1` is for the space I swear
+                row += 1;
+                printable.push("".to_string());
+                if row > realestate_column {
+                    // Shit...
+                    break;
+                }
+            }
+            printable[row as usize].push_str(&format!("{} ", segment.to_string()));
+        }
+    }
+    // Print it
+    for row in printable {
+        // CONTINUE FROM HERE AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa
     }
 }
 
 /// Initializes terminal
 pub fn initialize_terminal() -> TerminalGrid {
-    execute!(std::io::stdout(), Clear(ClearType::All)).unwrap(); // Real nice effort chucklenuts now the screen looks fucky
+    execute!(std::io::stdout(), Clear(ClearType::Purge)).unwrap(); // Real nice effort chucklenuts now the screen looks fucky
 
     let dimensions = termsize::get().unwrap();
 

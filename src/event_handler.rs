@@ -1,5 +1,6 @@
 pub mod event_handler {
     use std::sync::{Arc, Mutex};
+    use crossterm::*;
 
     use signal_hook::consts::signal::SIGWINCH;
     use signal_hook::iterator::Signals;
@@ -9,6 +10,7 @@ pub mod event_handler {
     #[derive(Clone)]
     pub struct EventFlags {
         terminal_resized: bool,
+        screen: u8, // 0 = Main 1 = Help 2 = Contacts
     }
 
     impl EventFlags {
@@ -16,6 +18,7 @@ pub mod event_handler {
         pub fn new() -> Self {
             EventFlags {
                 terminal_resized: false,
+                screen: 0,
             }
         }
         /// Resets the terminal resize flag
@@ -30,6 +33,21 @@ pub mod event_handler {
         pub fn get_resize(&self) -> bool {
             self.terminal_resized
         }
+        /// Sets and resets the screen flag
+        /// 0 = Main screen 1 = Help screen 2 = Contacts
+        pub fn change_screen(&mut self, screen: u8) {
+            if screen > 0 {
+                self.screen = 0;
+            }
+            else {
+               self.screen = screen; 
+            }
+        }
+        /// Returns the screen flag
+        /// 0 = Main screen 1 = Help screen 2 = Contacts
+        pub fn get_screen(&self) -> u8 {
+            self.screen
+        }
     }
 
     /// Event loop for handling signals
@@ -40,5 +58,9 @@ pub mod event_handler {
                 flags.lock().unwrap().set_resize();
             }
         }
+    }
+
+    pub async fn input_loop(flags: &mut Arc<Mutex<EventFlags>>) {
+        
     }
 }
