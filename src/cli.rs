@@ -1,5 +1,5 @@
 pub mod cli {
-    use std::{collections::HashMap, io::{stdout, Write}};
+    use std::{collections::HashMap, io::{stdout, Write}, thread::current};
     extern crate termsize;
     use crossterm::{cursor, execute, terminal::{Clear, ClearType}};
     
@@ -396,41 +396,41 @@ pub fn draw_line(terminal: &mut TerminalGrid, column_start: u16, column_end: u16
     stdout().flush().expect("Failed to flush stdout");
 }
 
-fn draw_text(terminal: &mut TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, text: &str) {
+pub fn draw_text(_terminal: &mut TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, text: &str) {
     let text_length = text.len() as u16;
     let text_segments = text.split(' ');
     let realestate_row = row_end - row_start;
     let realestate_column = column_end - column_start;
-    let mut printable: Vec<String> = vec!["".to_string(),];
+
+    execute!(std::io::stdout(), cursor::MoveTo(column_start, row_start)).unwrap();
 
     // If the text will fit fine
-    if text_length < realestate_row {
-        execute!(std::io::stdout(), cursor::MoveTo(column_start, row_start)).unwrap();
+    if text_length < realestate_column {
         print!("{}", text);
     }
     // If the text will not fit on one row...
-    // Format it
-    else {
-        let mut row = 0;
-        let mut running_total = 0;
+    else { // NOT FUCKING WORKING
+        let mut column_count = 0;
+        let mut row_count = 0;
         for segment in text_segments {
-            running_total += segment.len() + 1;
-            if running_total > realestate_row.into() {
-                running_total = segment.len() + 1; // The `+ 1` is for the space I swear
-                row += 1;
-                printable.push("".to_string());
-                if row > realestate_column {
-                    // Shit...
-                    break;
-                }
+            let segment_len = segment.len() + 1;
+            if column_count + segment_len > realestate_column.into() {
+                // Progress to next row
+                column_count = 0;
+                row_count += 1;
+                execute!(std::io::stdout(), cursor::MoveTo(column_start, row_start + row_count)).unwrap();
             }
-            printable[row as usize].push_str(&format!("{} ", segment.to_string()));
-        }
+            if row_count.eq(&realestate_row) { // Using eq for shits n giggles
+                // We are out of rows
+                return;
+            }
+            else {
+                print!("{} ", segment);
+                column_count += segment_len;
+            }
+        }        
     }
-    // Print it
-    for row in printable {
-        // CONTINUE FROM HERE AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa
-    }
+
 }
 
 /// Initializes terminal
