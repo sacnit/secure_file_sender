@@ -450,7 +450,7 @@ pub fn initialize_terminal() -> TerminalGrid {
 }
 
 pub mod cli_dynamic {
-    use std::{collections::btree_map::Range, io::{stdout, Write}};
+    use std::io::{stdout, Write};
 
     use crossterm::{cursor, execute};
 
@@ -458,50 +458,52 @@ pub mod cli_dynamic {
 
     use super::cli::{self, draw_line, draw_text};
 
-    pub fn _render_chat(_terminal: &mut cli::TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, content: Vec<&str>, _rendered: (u16, u16)) {
-        // Do shit n render the chat
-        // Chat needs a border between each message with the username of the sender in the middle of the thingymabob
-        // assuming a buffer of messages, figure out how many messages fit, subtract 1 line for each message, recalc number of messages thatll fit
+    /// Draws as much of the chat in `content` as can fit, deriving whether it's sent or recieved from message prefix
+    pub fn render_chat(_terminal: &mut cli::TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, content: Vec<&str>, _rendered: (u16, u16)) {
         let realestate_row = row_end - row_start;
         let realestate_column = column_end - column_start;
-        let mut messages: Vec<i32> = vec!();
 
-        // Get each messages length
+        let mut messages: Vec<u16> = vec!();
         for message in content.iter() {
-            let mut rows = 0;
+            let mut rows = 1;
             let mut current_row_length = 0;
-            for word in message.split(" ") {
-                current_row_length += word.len() + 1;
-                if current_row_length < realestate_column.into() {
+            for word in message.split_whitespace() {
+                let word_length = word.len() as u16 + 1; // Add 1 for the space
+                if current_row_length + word_length > realestate_column {
                     rows += 1;
-                    current_row_length = word.len() + 1;
+                    current_row_length = word_length;
+                } else {
+                    current_row_length += word_length;
                 }
             }
             messages.push(rows);
         }
 
-        // Work out how many messages will actually fit
-        let mut onscreen_messages_length = 0;
         let mut onscreen_messages_count = 0;
-        for message_length in messages {
-            onscreen_messages_length += message_length + 1;
-            if onscreen_messages_length > realestate_row.into() {
+        let mut used_rows = 0;
+        for &message_rows in messages.iter().rev() {
+            if used_rows + message_rows + 1 > realestate_row { // +1 for the separator line
                 break;
             }
+            used_rows += message_rows + 1;
             onscreen_messages_count += 1;
         }
 
-        // Print out the messages
-        for message in 0..onscreen_messages_count {
-            let message_row_start = 0;
-            let message_row_end = 0;
-            draw_text(_terminal, column_start, column_end, message_row_start, message_row_end, content[message]);
-            draw_line(_terminal, column_start, column_end, message_row_end + 1, message_row_end + 1, BOLD);
-            //draw_text(_terminal, column_start, column_end, message_row_end + 1, message_row_end + 1, text); CONTINUE HERE AAA
+        let mut current_row = row_end - used_rows;
+        for message_index in (content.len() - onscreen_messages_count..content.len()) {
+            let message = content[message_index];
+            let message_rows = messages[message_index];
+            draw_text(_terminal, column_start, column_end, current_row, current_row + message_rows, message);
+            current_row += message_rows;
+            draw_line(_terminal, column_start, column_end, current_row, current_row, BOLD);
+            let label = if message.starts_with("\x00") { "Sent" } else { "Received" };
+            draw_text(_terminal, column_start, column_end, current_row, current_row + 1, label);
+            current_row += 1; // Move to the next row after the label
         }
     }
 
-    pub fn _render_contacts(_terminal: &mut cli::TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, content: &Vec<&str>, _rendered: (u16, u16)) {
+    /// Draws as much of the contacts as can fit
+    pub fn render_contacts(_terminal: &mut cli::TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, content: &Vec<&str>, _rendered: (u16, u16)) {
         // Do shit n render the contacts list
         let realestate_row = row_end - row_start;
         let realestate_column = column_end - column_start;
@@ -515,14 +517,15 @@ pub mod cli_dynamic {
             } else {
                 print!("{}. {}", (contact_number + 1), contact);
             }
-            if contact_number > realestate_row {
+            if contact_number == realestate_row {
                 break;
             }
             contact_number += 1;
         }
     }
 
-    pub fn render_host(_terminal: &mut cli::TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, content: Vec<&str>) {
+    /// Draws as much as the hostname as will fit
+    pub fn render_host(_terminal: &mut cli::TerminalGrid, column_start: u16, column_end: u16, row_start: u16, _row_end: u16, content: Vec<&str>) {
         // Do shit n render the recipient
         let realestate_column = column_end - column_start;
         let content_length = content[0].len();

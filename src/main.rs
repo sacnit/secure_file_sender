@@ -34,17 +34,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ]; // Just having the IP address may be fine as the Ultrapeer would ideally be queried
     let recipient = vec![1]; // Thinking about having the index stored and then translating to current recipient
     let messages = vec![
-        "\x00Hello, World!", "\x00This is a test message.", "\x01How are you?", "\x01Goodbye!",
-        "\x00What's your name?", "\x01My name is Alice.", "\x00Where are you from?", "\x01I'm from Wonderland.",
-        "\x00What time is it?", "\x01It's tea time!", "\x00Do you like programming?", "\x01Yes, I love it!",
-        "\x00What's your favorite language?", "\x01Rust, of course!", "\x00How's the weather?", "\x01It's sunny and bright.",
-        "\x00Do you play games?", "\x01Yes, I enjoy chess.", "\x00What's your favorite food?", "\x01I love pizza.",
-        "\x00Do you have any hobbies?", "\x01I enjoy reading books.", "\x00What's your favorite color?", "\x01Blue.",
-        "\x00Do you like music?", "\x01Yes, I enjoy classical music.", "\x00What's your favorite movie?", "\x01Inception.",
-        "\x00Do you have pets?", "\x01Yes, I have a cat.", "\x00What's your dream vacation?", "\x01A trip to the mountains.",
-        "\x00Do you like sports?", "\x01Yes, I enjoy soccer.", "\x00What's your favorite book?", "\x011984 by George Orwell.",
-        "\x00Do you enjoy coding challenges?", "\x01Absolutely, they are fun!", "\x00What's your favorite dessert?", "\x01Ice cream.",
-        "\x00Do you like traveling?", "\x01Yes, I love exploring new places.", "\x00What's your favorite season?", "\x01Spring.",
+        "\x00Hello!", 
+        "\x01Hi there! How are you doing today?", 
+        "\x00I'm doing well, thanks for asking. How about you?", 
+        "\x01Pretty good, just working on some projects.", 
+        "\x00That's great to hear. What kind of projects are you working on?", 
+        "\x01Oh, just some coding projects. Trying to improve my skills.", 
+        "\x00Nice! Coding can be really rewarding.", 
+        "\x01Absolutely. What about you? What have you been up to?", 
+        "\x00Not much, just testing some terminal rendering logic.", 
+        "\x01That sounds interesting. Is it for a specific application?", 
+        "\x00Yes, it's for a messaging application I'm working on. It's been a fun challenge to design the interface and handle the networking aspects.", 
+        "\x01Cool! Messaging apps are always fun to build. They really help you understand how communication protocols work.", 
+        "\x00Indeed. It's a good way to learn about networking and UI. Plus, it's rewarding to see it all come together.", 
+        "\x01For sure. Are you using any specific libraries or frameworks for the project?", 
+        "\x00Yes, I'm using libp2p for networking and crossterm for terminal UI. Both have been great, though they come with their own learning curves.", 
+        "\x01Great choices! libp2p is powerful for peer-to-peer communication, and crossterm is excellent for terminal-based applications.", 
+        "\x00Exactly. It's been a learning curve, but I'm getting there. The documentation and examples have been really helpful.", 
+        "\x01That's the spirit! Keep at it. The more you work on it, the more you'll learn and improve.", 
+        "\x00Thanks! What kind of coding projects are you working on these days? Anything exciting?", 
+        "\x01I'm building a small game in Rust. It's a simple text-based adventure with branching storylines and some basic mechanics.", 
+        "\x00That sounds awesome! Text-based games are so nostalgic. They remind me of the early days of gaming.", 
+        "\x01They really are. It's been fun designing the story and mechanics. I'm trying to make it engaging and replayable.", 
+        "\x00I can imagine. Are you planning to share it once it's done? Maybe put it on GitHub for others to try out?", 
+        "\x01Yes, I think I will. Sharing it on GitHub seems like a good idea. It'll be interesting to see how people react to it.", 
+        "\x00That's a great idea. I'd love to check it out. Text-based games have a charm that's hard to beat.", 
+        "\x01Thanks! I'll let you know when it's ready. It's still a work in progress, but I'm making steady progress.", 
+        "\x00Looking forward to it. Good luck with the development! I'm sure it'll turn out great.", 
+        "\x01Thanks! And good luck with your messaging app too. It sounds like a really cool project.", 
+        "\x00Appreciate it. Let's both keep pushing forward and learning as we go!", 
+        "\x01Absolutely. Take care and happy coding!"
     ];
 
     // Handles CTRL + C
@@ -88,8 +107,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     render_host(&mut terminal, 11, ((columns / 3) - 1).into(), 1, 1, ultrapeer.clone()); // Ultrapeer
                     draw_text(&mut terminal, ((columns / 3) + 1).into(), ((columns / 3) + 11).into(), 0, 0, "Recipient:"); // Recipient label
                     render_host(&mut terminal, ((columns / 3) + 11).into(), columns - 1, 1, 1, vec![contacts_clone[recipient[0] as usize]]); // Recipient
-                    _render_contacts(&mut terminal, 1, (columns / 3).into(), 3, rows - 4, &contacts, (0,0));
-                    _render_chat(&mut terminal, ((columns / 3) + 1).into(), columns - 1, 3, rows - 4, messages.clone(), (0,0));
+                    render_contacts(&mut terminal, 1, (columns / 3).into(), 3, rows - 4, &contacts, (0,0));
+                    render_chat(&mut terminal, ((columns / 3) + 1).into(), columns - 1, 3, rows - 4, messages.clone(), (0,0));
                     
                 }
                 // Help Screen
