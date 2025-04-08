@@ -409,7 +409,7 @@ pub fn draw_text(_terminal: &mut TerminalGrid, column_start: u16, column_end: u1
         print!("{}", text);
     }
     // If the text will not fit on one row...
-    else { // NOT FUCKING WORKING
+    else {
         let mut column_count = 0;
         let mut row_count = 0;
         for segment in text_segments {
@@ -430,7 +430,7 @@ pub fn draw_text(_terminal: &mut TerminalGrid, column_start: u16, column_end: u1
             }
         }        
     }
-
+    stdout().flush().expect("Failed to flush stdout");
 }
 
 /// Initializes terminal
@@ -447,4 +447,96 @@ pub fn initialize_terminal() -> TerminalGrid {
     return terminal
 }
 
+}
+
+pub mod cli_dynamic {
+    use std::{collections::btree_map::Range, io::{stdout, Write}};
+
+    use crossterm::{cursor, execute};
+
+    use crate::BOLD;
+
+    use super::cli::{self, draw_line, draw_text};
+
+    pub fn _render_chat(_terminal: &mut cli::TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, content: Vec<&str>, _rendered: (u16, u16)) {
+        // Do shit n render the chat
+        // Chat needs a border between each message with the username of the sender in the middle of the thingymabob
+        // assuming a buffer of messages, figure out how many messages fit, subtract 1 line for each message, recalc number of messages thatll fit
+        let realestate_row = row_end - row_start;
+        let realestate_column = column_end - column_start;
+        let mut messages: Vec<i32> = vec!();
+
+        // Get each messages length
+        for message in content.iter() {
+            let mut rows = 0;
+            let mut current_row_length = 0;
+            for word in message.split(" ") {
+                current_row_length += word.len() + 1;
+                if current_row_length < realestate_column.into() {
+                    rows += 1;
+                    current_row_length = word.len() + 1;
+                }
+            }
+            messages.push(rows);
+        }
+
+        // Work out how many messages will actually fit
+        let mut onscreen_messages_length = 0;
+        let mut onscreen_messages_count = 0;
+        for message_length in messages {
+            onscreen_messages_length += message_length + 1;
+            if onscreen_messages_length > realestate_row.into() {
+                break;
+            }
+            onscreen_messages_count += 1;
+        }
+
+        // Print out the messages
+        for message in 0..onscreen_messages_count {
+            let message_row_start = 0;
+            let message_row_end = 0;
+            draw_text(_terminal, column_start, column_end, message_row_start, message_row_end, content[message]);
+            draw_line(_terminal, column_start, column_end, message_row_end + 1, message_row_end + 1, BOLD);
+            //draw_text(_terminal, column_start, column_end, message_row_end + 1, message_row_end + 1, text); CONTINUE HERE AAA
+        }
+    }
+
+    pub fn _render_contacts(_terminal: &mut cli::TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, content: &Vec<&str>, _rendered: (u16, u16)) {
+        // Do shit n render the contacts list
+        let realestate_row = row_end - row_start;
+        let realestate_column = column_end - column_start;
+
+        let mut contact_number = 0;
+        for contact in content.iter() {
+            execute!(std::io::stdout(), cursor::MoveTo(column_start, row_start+contact_number)).unwrap();
+            let contact_length = contact.len();
+            if contact_length >= realestate_column.into() {
+                print!("{}. {}…", (contact_number + 1), &contact[..(realestate_column as usize - 4)]);
+            } else {
+                print!("{}. {}", (contact_number + 1), contact);
+            }
+            if contact_number > realestate_row {
+                break;
+            }
+            contact_number += 1;
+        }
+    }
+
+    pub fn render_host(_terminal: &mut cli::TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, content: Vec<&str>) {
+        // Do shit n render the recipient
+        let realestate_column = column_end - column_start;
+        let content_length = content[0].len();
+
+        execute!(std::io::stdout(), cursor::MoveTo(column_start, row_start)).unwrap(); 
+
+        if content_length >= realestate_column.into() {
+            print!("{}…", &content[0][..(realestate_column as usize - 2)]);
+        }
+        else {
+            print!("{}", content[0]);
+        }
+
+        
+        stdout().flush().expect("Failed to flush stdout");
+    }
 }
