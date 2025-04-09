@@ -1,5 +1,5 @@
 pub mod cli {
-    use std::{collections::HashMap, io::{stdout, Write}, thread::current};
+    use std::{collections::HashMap, io::{stdout, Write}};
     extern crate termsize;
     use crossterm::{cursor, execute, terminal::{Clear, ClearType}};
     

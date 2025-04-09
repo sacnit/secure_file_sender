@@ -1,9 +1,8 @@
-use std::{ fmt::format, io::Write, process::exit, sync::{Arc, Mutex}};
+use std::{ io::Write, process::exit, sync::{Arc, Mutex}};
 //use libp2p;
 use cli::{cli::*, cli_dynamic::*};
 use event_handler::event_handler::{event_loop, input_loop, EventFlags};
 use crossterm::{cursor::{Hide, Show}, execute, terminal::{disable_raw_mode, Clear, ClearType}};
-use libp2p::futures::stream::Next;
 use tokio::task;
 use ctrlc::set_handler;
 
