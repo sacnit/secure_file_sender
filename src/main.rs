@@ -1,8 +1,8 @@
 use std::{ fmt::format, io::Write, process::exit, sync::{Arc, Mutex}};
 //use libp2p;
 use cli::{cli::*, cli_dynamic::*};
-use event_handler::event_handler::{event_loop, EventFlags};
-use crossterm::{cursor::{Hide, Show}, execute, terminal::{Clear, ClearType}};
+use event_handler::event_handler::{event_loop, input_loop, EventFlags};
+use crossterm::{cursor::{Hide, Show}, execute, terminal::{disable_raw_mode, Clear, ClearType}};
 use libp2p::futures::stream::Next;
 use tokio::task;
 use ctrlc::set_handler;
@@ -71,6 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         execute!(std::io::stdout(), Clear(ClearType::Purge)).unwrap();
         execute!(std::io::stdout(), Clear(ClearType::All)).unwrap();
         execute!(std::io::stdout(), Show).unwrap();
+        disable_raw_mode().expect("Unable to enable raw mode");
         exit(0);
     })?;
     let flags: Arc<Mutex<EventFlags>> = Arc::new(Mutex::new(EventFlags::new()));
@@ -78,14 +79,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     execute!(std::io::stdout(), Hide).unwrap(); // Not supported by all terminals dipshit
 
     // Spawn the event loop as a separate task
-    let mut flags_clone = Arc::clone(&flags); // 分身の術 saving my ass
+    let mut flags_clone_event = Arc::clone(&flags); // 分身の術 saving my ass
     let _event_handler = task::spawn(async move {
-        event_loop(&mut flags_clone).await;
+        event_loop(&mut flags_clone_event).await;
     });
+    // Spawn the input loop as a seperate task
+    let mut flags_clone_input = Arc::clone(&flags);
+    let _input_handler = task::spawn(async move {
+        input_loop(&mut flags_clone_input).await;
+    });
+
+    let flags_clone_screen_change = Arc::clone(&flags);
+    let mut current_screen = flags_clone_screen_change.lock().unwrap().get_screen();
 
     loop {
         let terminal_resize = flags.lock().unwrap().get_resize();
-        if terminal_resize {
+        if terminal_resize || current_screen != flags_clone_screen_change.lock().unwrap().get_screen() {
+            current_screen = flags_clone_screen_change.lock().unwrap().get_screen();
             let mut terminal = initialize_terminal();
             let columns = terminal.width;
             let rows = terminal.height;
@@ -109,17 +119,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     render_host(&mut terminal, ((columns / 3) + 11).into(), columns - 1, 1, 1, vec![contacts_clone[recipient[0] as usize]]); // Recipient
                     render_contacts(&mut terminal, 1, (columns / 3).into(), 3, rows - 4, &contacts, (0,0));
                     render_chat(&mut terminal, ((columns / 3) + 1).into(), columns - 1, 3, rows - 4, messages.clone(), (0,0));
-                    
                 }
                 // Help Screen
                 if screen == 1{
-                    draw_box(&mut terminal, 0, columns, 0, rows, DOUBLE);
-                    draw_line(&mut terminal, 0, columns, rows - 3, rows - 3, SINGLE);  
+                    draw_box(&mut terminal, 0, columns, 0, rows, DOUBLE); // Outside border
+                    draw_line(&mut terminal, 0, columns, rows - 3, rows - 3, SINGLE); // Function menu border
+                    draw_text(&mut terminal, 1, columns - 1, rows - 2, rows - 2, "F1-Return F2-Set Ultrapeer F6-Exit"); // Function menu
                 }
                 // Contacts Screen
                 if screen == 2{
-                    draw_box(&mut terminal, 0, columns, 0, rows, DOUBLE);
-                    draw_line(&mut terminal, 0, columns, rows - 3, rows - 3, SINGLE);  
+                    draw_box(&mut terminal, 0, columns, 0, rows, DOUBLE); // Outside border
+                    draw_line(&mut terminal, 0, columns, rows - 3, rows - 3, SINGLE); // Function menu border
+                    draw_text(&mut terminal, 1, columns - 1, rows - 2, rows - 2, "F1-Return F2-Select Contact F3-Add Contact F4-Remove Contact F6-Exit"); // Function menu
                 }
                 flags.lock().unwrap().reset_resize();
                 print!("");                 

@@ -490,7 +490,7 @@ pub mod cli_dynamic {
         }
 
         let mut current_row = row_end - used_rows;
-        for message_index in (content.len() - onscreen_messages_count..content.len()) {
+        for message_index in content.len() - onscreen_messages_count..content.len() {
             let message = content[message_index];
             let message_rows = messages[message_index];
             draw_text(_terminal, column_start, column_end, current_row, current_row + message_rows, message);
