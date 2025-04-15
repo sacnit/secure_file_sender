@@ -71,23 +71,39 @@ pub mod event_handler {
 
     pub struct InputStorage {
         input: String,
+        changed: bool,
     }
 
     impl InputStorage {
+        /// constructor
         pub fn new() -> Self {
             InputStorage { 
-                input: String::new() 
+                input: String::new(), 
+                changed: false,
             }
         }
 
         /// For resetting the input string
         pub fn reset_input(&mut self) {
             self.input.clear();
+            self.changed = false;
         }
 
         /// For pushing a character to the input string
         pub fn push_input(&mut self, input: char) {
             self.input.push(input);
+            self.changed = true;
+        }
+
+        /// Returns the input fields current value
+        pub fn get_input(&mut self) -> String {
+            self.changed = false;
+            self.input.clone()
+        }
+
+        /// Returns if the input has changed since last fetched
+        pub fn check_input(&self) -> bool {
+            self.changed
         }
     }
 

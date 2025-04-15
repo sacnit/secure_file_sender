@@ -1,7 +1,8 @@
 pub mod cli {
-    use std::{collections::HashMap, io::{stdout, Write}};
+    use std::{collections::{btree_map::Range, HashMap, VecDeque}, io::{stdout, Write}};
     extern crate termsize;
     use crossterm::{cursor, execute, terminal::{Clear, ClearType}};
+    use unicode_width::UnicodeWidthStr;
     
 /// structure for defining a box character
 /// - up, down, left, right: 0 = single, 1 = double, 3 = bold
@@ -22,6 +23,37 @@ pub struct TerminalGrid {
     pub width: u16,
     pub height: u16,
     grid: Vec<Vec<BoxCharacterKey>>
+}
+
+/// structure for tracking the writable area
+struct WriteableArea {
+    text: VecDeque<String>,
+    text_elements: u16,
+    lines: u16,
+}
+
+impl WriteableArea {
+    /// constructor
+    pub fn new(lines: u16) -> Self {
+        WriteableArea {
+            text: std::collections::VecDeque::new(),
+            text_elements: 0,
+            lines,
+        }
+    }
+    /// For pushing elements onto the circular queue
+    pub fn push(&mut self, new_string: String) {
+        if self.text_elements == self.lines { // We outta space so we gotta rotate
+            self.text.push_back(new_string);
+            _ = self.text.pop_front();
+        }
+        else { // We still got space wooo
+            self.text.push_back(new_string);
+            self.text_elements += 1;
+        }
+    }
+    // Return the text
+    // IMPLEMENT THIS                                  AAAA
 }
 
 /// Creates the hashmap for box characters
@@ -397,40 +429,44 @@ pub fn draw_line(terminal: &mut TerminalGrid, column_start: u16, column_end: u16
 }
 
 pub fn draw_text(_terminal: &mut TerminalGrid, column_start: u16, column_end: u16, row_start: u16, row_end: u16, text: &str) {
-    let text_length = text.len() as u16;
-    let text_segments = text.split(' ');
-    let realestate_row = row_end - row_start;
-    let realestate_column = column_end - column_start;
-
-    execute!(std::io::stdout(), cursor::MoveTo(column_start, row_start)).unwrap();
-
-    // If the text will fit fine
-    if text_length < realestate_column {
+    if row_start == row_end && (column_end - column_start) >= text.len() as u16 {
+        execute!(std::io::stdout(), cursor::MoveTo(column_start, row_start)).unwrap();
         print!("{}", text);
     }
-    // If the text will not fit on one row...
     else {
-        let mut column_count = 0;
-        let mut row_count = 0;
-        for segment in text_segments {
-            let segment_len = segment.len() + 1;
-            if column_count + segment_len > realestate_column.into() {
-                // Progress to next row
-                column_count = 0;
-                row_count += 1;
-                execute!(std::io::stdout(), cursor::MoveTo(column_start, row_start + row_count)).unwrap();
-            }
-            if row_count.eq(&realestate_row) { // Using eq for shits n giggles
-                // We are out of rows
-                return;
+        let column_realestate = column_end - column_start;
+        let row_realestate = row_end - row_start;
+        let mut writeable_text = WriteableArea::new(row_realestate);
+        let mut column_usage: u16 = 0;
+        let mut current_line: String = String::new();
+
+        // Iterate through each word in the text input
+        for word in text.split(" ") {
+            let word_length = word.chars().count() as u16;
+
+            // If the extra word will not fit (exclusive to account for the ` `)
+            if column_usage + word_length > column_realestate {
+                // And the current line isnt empty
+                if current_line.chars().count() == 0 {
+                    let truncated_word = format!("…{}", &word[word.len() - (column_realestate - 1) as usize..]);
+                    writeable_text.push(truncated_word);
+                }
+                else {
+                    writeable_text.push(current_line.clone().trim_end().to_string());
+                    current_line = String::new();
+                    column_usage = word_length;
+                }
             }
             else {
-                print!("{} ", segment);
-                column_count += segment_len;
+                column_usage += word_length + 1;
+                current_line += &format!(" {}", word);
+                if column_usage == word_length + 1 { // The first instance will have a leading space
+                    _ = current_line.trim_start();
+                }
             }
-        }        
+        }
+        for line in  // Continue writing code to get and then display the formatted text
     }
-    stdout().flush().expect("Failed to flush stdout");
 }
 
 /// Initializes terminal

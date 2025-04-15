@@ -1,4 +1,4 @@
-use std::{ io::Write, process::exit, sync::{Arc, Mutex}};
+use std::{ io::Write, panic, process::exit, sync::{Arc, Mutex}};
 //use libp2p;
 use cli::{cli::*, cli_dynamic::*};
 use event_handler::event_handler::{event_loop, input_loop, EventFlags, InputStorage};
@@ -65,6 +65,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "\x01Absolutely. Take care and happy coding!"
     ];
 
+    panic::set_hook(Box::new(|info| {
+        execute!(std::io::stdout(), Clear(ClearType::Purge)).unwrap();
+        execute!(std::io::stdout(), Clear(ClearType::All)).unwrap();
+        execute!(std::io::stdout(), Show).unwrap();
+        disable_raw_mode().expect("Unable to enable raw mode");
+        println!("The program ran into an error and broke, here is the error message: {}", info);
+        exit(1);
+    }));
+
     // Handles CTRL + C
     set_handler(move || {
         execute!(std::io::stdout(), Clear(ClearType::Purge)).unwrap();
@@ -98,21 +107,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         let terminal_resize = flags.lock().unwrap().get_resize();
-        if terminal_resize || (current_screen != flags_clone_screen_change.lock().unwrap().get_screen()) {
+        let input_changed = input_field.lock().unwrap().check_input();
+
+        if terminal_resize || (current_screen != flags_clone_screen_change.lock().unwrap().get_screen()) || input_changed {
             current_screen = flags_clone_screen_change.lock().unwrap().get_screen();
             let mut terminal = initialize_terminal();
             let columns = terminal.width;
             let rows = terminal.height;
+            let compiling_message = flags.lock().unwrap().get_compiling_message();
+
             if columns < MINCOL || rows < MINROW {
                 execute!(std::io::stdout(), Clear(ClearType::All)).unwrap();
                 println!("Terminal size is too small. Minimum size is {}x{}", MINCOL, MINROW);
             }
             else{
                 let screen = flags.lock().unwrap().get_screen();
-                let compiling_message = flags.lock().unwrap().get_compiling_message();
 
-                // PUT THE DRAWING TEXT INPUT FIELDS HERE #######################################################################################################
-                
                 // Main Screen
                 if screen == 0{
                     let contacts_clone = contacts.clone();
@@ -121,13 +131,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     draw_text(&mut terminal, 1, columns - 1, rows - 2, rows - 2, "F1-Help F2-Contacts F3-Compose Message F4-Attach File F5-Send Message F6-Exit"); // Function menu
                     draw_line(&mut terminal, 0, columns, 2, 2, SINGLE); // Info border
                     draw_line(&mut terminal, (columns / 3).into(), (columns / 3).into(), 0, rows - 2, SINGLE); // Info divider
-                    draw_text(&mut terminal, 1, 11, 0, 0, "Ultrapeer:"); // Ultrapeer label
+                    draw_text(&mut terminal, 1, 11, 1, 1, "Ultrapeer:"); // Ultrapeer label
                     render_host(&mut terminal, 11, ((columns / 3) - 1).into(), 1, 1, ultrapeer.clone()); // Ultrapeer
-                    draw_text(&mut terminal, ((columns / 3) + 1).into(), ((columns / 3) + 11).into(), 0, 0, "Recipient:"); // Recipient label
+                    draw_text(&mut terminal, ((columns / 3) + 1).into(), ((columns / 3) + 11).into(), 1, 1, "Recipient:"); // Recipient label
                     render_host(&mut terminal, ((columns / 3) + 11).into(), columns - 1, 1, 1, vec![contacts_clone[recipient[0] as usize]]); // Recipient
                     render_chat(&mut terminal, ((columns / 3) + 1).into(), columns - 1, 3, rows - 4, messages.clone(), (0,0));
                     if !compiling_message {
                         render_contacts(&mut terminal, 1, (columns / 3).into(), 3, rows - 4, &contacts, (0,0));
+                    }
+                    else {
+                        draw_text(&mut terminal, 1, (columns / 3).into(), 3, rows - 4, &input_field.lock().unwrap().get_input());
                     }
                 }
                 // Help Screen
