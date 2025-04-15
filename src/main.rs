@@ -110,6 +110,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             else{
                 let screen = flags.lock().unwrap().get_screen();
                 let compiling_message = flags.lock().unwrap().get_compiling_message();
+
+                // PUT THE DRAWING TEXT INPUT FIELDS HERE #######################################################################################################
+                
                 // Main Screen
                 if screen == 0{
                     let contacts_clone = contacts.clone();
