@@ -93,7 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         let terminal_resize = flags.lock().unwrap().get_resize();
-        if terminal_resize || current_screen != flags_clone_screen_change.lock().unwrap().get_screen() {
+        if terminal_resize || (current_screen != flags_clone_screen_change.lock().unwrap().get_screen()) {
             current_screen = flags_clone_screen_change.lock().unwrap().get_screen();
             let mut terminal = initialize_terminal();
             let columns = terminal.width;
@@ -124,12 +124,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     draw_box(&mut terminal, 0, columns, 0, rows, DOUBLE); // Outside border
                     draw_line(&mut terminal, 0, columns, rows - 3, rows - 3, SINGLE); // Function menu border
                     draw_text(&mut terminal, 1, columns - 1, rows - 2, rows - 2, "F1-Return F2-Set Ultrapeer F6-Exit"); // Function menu
+                    draw_line(&mut terminal, 1, columns - 1, 2, 2, BOLD); // title underline
+                    draw_text(&mut terminal, ((columns / 2) - 2).into(), ((columns / 2) + 11).into(), 1, 1, "Help"); // Page title
                 }
                 // Contacts Screen
                 if screen == 2{
                     draw_box(&mut terminal, 0, columns, 0, rows, DOUBLE); // Outside border
                     draw_line(&mut terminal, 0, columns, rows - 3, rows - 3, SINGLE); // Function menu border
                     draw_text(&mut terminal, 1, columns - 1, rows - 2, rows - 2, "F1-Return F2-Select Contact F3-Add Contact F4-Remove Contact F6-Exit"); // Function menu
+                    draw_line(&mut terminal, (columns / 2).into(), (columns / 2).into(), 2, rows - 2, SINGLE); // Info divider
+                    draw_line(&mut terminal, 1, columns - 1, 2, 2, BOLD); // title underline
+                    draw_text(&mut terminal, ((columns / 2) - 4).into(), ((columns / 2) + 11).into(), 1, 1, "Contacts"); // Page title
+                    // Change how the render_contacts works to have 2 modes (to do the divider and render all contacts)
+                    render_contacts(&mut terminal, 1, columns - 1, 3, rows - 4, &contacts, (1,(columns / 2).into()));
                 }
                 flags.lock().unwrap().reset_resize();
                 print!("");                 

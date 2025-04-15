@@ -508,20 +508,52 @@ pub mod cli_dynamic {
         let realestate_row = row_end - row_start;
         let realestate_column = column_end - column_start;
 
-        let mut contact_number = 0;
-        for contact in content.iter() {
-            execute!(std::io::stdout(), cursor::MoveTo(column_start, row_start+contact_number)).unwrap();
-            let contact_length = contact.len();
-            if contact_length >= realestate_column.into() {
-                print!("{}. {}…", (contact_number + 1), &contact[..(realestate_column as usize - 4)]);
-            } else {
-                print!("{}. {}", (contact_number + 1), contact);
+        match _rendered.0 {
+            1 => {
+                let mut contact_number = 0;
+                let mut column = column_start;
+                let mut max_column = 0;
+                for contact in content.iter() {
+                    execute!(std::io::stdout(), cursor::MoveTo(column, row_start+contact_number)).unwrap();
+                    let contact_length = contact.len();
+                    if contact_length >= realestate_column.into() {
+                        print!("{}. {}…", (contact_number + 1 + max_column), &contact[..(realestate_column as usize - 4)]);
+                    } else {
+                        print!("{}. {}", (contact_number + 1 + max_column), contact);
+                    }
+                    contact_number += 1;
+                    if contact_number > realestate_row {
+                        if max_column == 0 {
+                            max_column = contact_number;
+                        }
+                        else {
+                            print!("…");
+                        }
+                        column = _rendered.1 + 1;
+                        contact_number = 0;
+                    }
+                } 
             }
-            if contact_number == realestate_row {
-                break;
+            _=> {
+                let mut contact_number = 0;
+                for contact in content.iter() {
+                    execute!(std::io::stdout(), cursor::MoveTo(column_start, row_start+contact_number)).unwrap();
+                    if contact_number == realestate_row {
+                        print!("…");
+                        break;
+                    }
+                    let contact_length = contact.len();
+                    if contact_length >= realestate_column.into() {
+                        print!("{}. {}…", (contact_number + 1), &contact[..(realestate_column as usize - 4)]);
+                    } else {
+                        print!("{}. {}", (contact_number + 1), contact);
+                    }
+                    contact_number += 1;
+                }                
             }
-            contact_number += 1;
         }
+
+
     }
 
     /// Draws as much as the hostname as will fit
