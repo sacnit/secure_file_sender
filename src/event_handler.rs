@@ -11,9 +11,9 @@ pub mod event_handler {
 
     
     /// Struct to track event flags
-    #[derive(Clone)]
     pub struct EventFlags {
         terminal_resized: bool,
+        compiling_message: bool,
         screen: u8, // 0 = Main 1 = Help 2 = Contacts
     }
 
@@ -22,6 +22,7 @@ pub mod event_handler {
         pub fn new() -> Self {
             EventFlags {
                 terminal_resized: false,
+                compiling_message: false,
                 screen: 0,
             }
         }
@@ -52,6 +53,42 @@ pub mod event_handler {
         pub fn get_screen(&self) -> u8 {
             self.screen
         }
+        /// Sets and resets the screen flag
+        /// false = not compiling true = compiling message
+        pub fn set_compiling_message(&mut self) {
+            match self.compiling_message {
+                true => {self.compiling_message = false},
+                _ => {self.compiling_message = true}
+            }
+            self.terminal_resized = true;
+        }
+        /// Returns the compiling messages flag
+        /// false = not compiling true = compiling message
+        pub fn get_compiling_message(&self) -> bool{
+            self.compiling_message
+        }
+    }
+
+    pub struct InputStorage {
+        input: String,
+    }
+
+    impl InputStorage {
+        pub fn new() -> Self {
+            InputStorage { 
+                input: String::new() 
+            }
+        }
+
+        /// For resetting the input string
+        pub fn reset_input(&mut self) {
+            self.input.clear();
+        }
+
+        /// For pushing a character to the input string
+        pub fn push_input(&mut self, input: char) {
+            self.input.push(input);
+        }
     }
 
     /// Event loop for handling signals
@@ -64,7 +101,7 @@ pub mod event_handler {
         }
     }
 
-    pub async fn input_loop(flags: &mut Arc<Mutex<EventFlags>>) {
+    pub async fn input_loop(flags: &mut Arc<Mutex<EventFlags>>, input_field: &mut Arc<Mutex<InputStorage>>) {
         enable_raw_mode().expect("Unable to enable raw mode");
 
         loop {
@@ -72,8 +109,11 @@ pub mod event_handler {
             match read().expect("Unable to take input") {
                 Event::Key(key_event) => {
                     match key_event.code {
-                        KeyCode::Char(_c) => {
+                        KeyCode::Char(c) => {
                             {} // For when input can be taken it needs to be taken (no shit)
+                            if flags.lock().unwrap().get_compiling_message() {
+                                input_field.lock().unwrap().push_input(c);
+                            }
                         }
                         KeyCode::F(1) => { // From Main > Help, from All > Main
                             // Get outta dodge if need be
@@ -89,7 +129,7 @@ pub mod event_handler {
                         }
                         KeyCode::F(3) => {
                             match current_screen {
-                                0 => {}, // Compose message
+                                0 => flags.lock().unwrap().set_compiling_message(), // Compose message
                                 1 => {}, // Nothing
                                 2 => {}, // Add contact
                                 _ => flags.lock().unwrap().change_screen(0)

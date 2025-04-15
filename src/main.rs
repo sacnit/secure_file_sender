@@ -1,7 +1,7 @@
 use std::{ io::Write, process::exit, sync::{Arc, Mutex}};
 //use libp2p;
 use cli::{cli::*, cli_dynamic::*};
-use event_handler::event_handler::{event_loop, input_loop, EventFlags};
+use event_handler::event_handler::{event_loop, input_loop, EventFlags, InputStorage};
 use crossterm::{cursor::{Hide, Show}, execute, terminal::{disable_raw_mode, Clear, ClearType}};
 use tokio::task;
 use ctrlc::set_handler;
@@ -73,8 +73,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         disable_raw_mode().expect("Unable to enable raw mode");
         exit(0);
     })?;
+
     let flags: Arc<Mutex<EventFlags>> = Arc::new(Mutex::new(EventFlags::new()));
     flags.lock().unwrap().set_resize();
+
+    let input_field: Arc<Mutex<InputStorage>> = Arc::new(Mutex::new(InputStorage::new()));
+
     execute!(std::io::stdout(), Hide).unwrap(); // Not supported by all terminals dipshit
 
     // Spawn the event loop as a separate task
@@ -84,8 +88,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     // Spawn the input loop as a seperate task
     let mut flags_clone_input = Arc::clone(&flags);
+    let mut input_field_clone_input = Arc::clone(&input_field);
     let _input_handler = task::spawn(async move {
-        input_loop(&mut flags_clone_input).await;
+        input_loop(&mut flags_clone_input, &mut input_field_clone_input).await;
     });
 
     let flags_clone_screen_change = Arc::clone(&flags);
@@ -104,6 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             else{
                 let screen = flags.lock().unwrap().get_screen();
+                let compiling_message = flags.lock().unwrap().get_compiling_message();
                 // Main Screen
                 if screen == 0{
                     let contacts_clone = contacts.clone();
@@ -116,8 +122,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     render_host(&mut terminal, 11, ((columns / 3) - 1).into(), 1, 1, ultrapeer.clone()); // Ultrapeer
                     draw_text(&mut terminal, ((columns / 3) + 1).into(), ((columns / 3) + 11).into(), 0, 0, "Recipient:"); // Recipient label
                     render_host(&mut terminal, ((columns / 3) + 11).into(), columns - 1, 1, 1, vec![contacts_clone[recipient[0] as usize]]); // Recipient
-                    render_contacts(&mut terminal, 1, (columns / 3).into(), 3, rows - 4, &contacts, (0,0));
                     render_chat(&mut terminal, ((columns / 3) + 1).into(), columns - 1, 3, rows - 4, messages.clone(), (0,0));
+                    if !compiling_message {
+                        render_contacts(&mut terminal, 1, (columns / 3).into(), 3, rows - 4, &contacts, (0,0));
+                    }
                 }
                 // Help Screen
                 if screen == 1{
@@ -126,6 +134,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     draw_text(&mut terminal, 1, columns - 1, rows - 2, rows - 2, "F1-Return F2-Set Ultrapeer F6-Exit"); // Function menu
                     draw_line(&mut terminal, 1, columns - 1, 2, 2, BOLD); // title underline
                     draw_text(&mut terminal, ((columns / 2) - 2).into(), ((columns / 2) + 11).into(), 1, 1, "Help"); // Page title
+                    // Help piece one
+                    draw_text(&mut terminal, 1, columns - 1,3,3,"1. Why have my contacts cleared?");
+                    draw_line(&mut terminal, 0, 8,4,4 ,SINGLE);
+                    draw_text(&mut terminal, 1, columns - 1,5,7,"Contacts are the recently contacted peers on your current network, they will clear if the network is disconnected from or if SFS is closed.");
+                    // Help piece two
+                    draw_text(&mut terminal, 1, columns - 1,8,8,"2. How can I find new peers to contact?");
+                    draw_line(&mut terminal, 0, 8,9,9 ,SINGLE);
+                    draw_text(&mut terminal, 1, columns - 1,10,12,"SFS is not intended as the primary means of communications, contacts via PKI must be arranged externally alongside SFS usage.");
+                    // Help piece three
+                    draw_text(&mut terminal, 1, columns - 1,13,13,"3. I want to host an Ultrapeer, how can I?");
+                    draw_line(&mut terminal, 0, 8,14,14 ,SINGLE);
+                    draw_text(&mut terminal, 1, columns - 1,15,17,"Run SFS with flag --ultrapeer <progenitor> where <progenitor> is an optional argument allowing the extension of a SFS network.");
                 }
                 // Contacts Screen
                 if screen == 2{
