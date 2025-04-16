@@ -1,184 +1,98 @@
-use std::{ io::Write, panic, process::exit, sync::{Arc, Mutex}};
-//use libp2p;
-use cli::{cli::*, cli_dynamic::*};
-use event_handler::event_handler::{event_loop, input_loop, EventFlags, InputStorage};
-use crossterm::{cursor::{Hide, Show}, execute, terminal::{disable_raw_mode, Clear, ClearType}};
-use tokio::task;
-use ctrlc::set_handler;
+use crossterm::event::{self, Event};
+use crossterm::terminal::{size as terminal_size};
+use ratatui::{layout::{Alignment, Constraint, Direction, Layout, Rect}, text::{Line, Text}, widgets::{Block, BorderType, Borders, Paragraph}, Frame};
 
-mod event_handler;
-mod cli;
-
-const SINGLE: u8 = 1;
-const DOUBLE: u8 = 2;
-const BOLD: u8 = 3;
-const MINCOL: u16 = 80;
-const MINROW: u16 = 24;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Example values
-    let ultrapeer = vec!["thinkfortwice.1337.cx"]; // Example ultrapeer address
-    let contacts = vec![
-        "123.456.789.0", "987.654.321.0", "321.654.987.0", "400.400.400.400",
-        "192.168.0.1", "10.0.0.1", "172.16.0.1", "8.8.8.8", "8.8.4.4",
-        "1.1.1.1", "1.0.0.1", "203.0.113.1", "198.51.100.1", "192.0.2.1",
-        "185.199.108.153", "185.199.109.153", "185.199.110.153", "185.199.111.153",
-        "104.244.42.1", "104.244.43.1", "151.101.1.69", "151.101.65.69",
-        "151.101.129.69", "151.101.193.69", "140.82.112.3", "140.82.113.3",
-        "140.82.114.3", "140.82.115.3", "192.30.255.112", "192.30.255.113",
-        "192.30.255.114", "192.30.255.115", "192.30.255.116", "192.30.255.117",
-        "192.30.255.118", "192.30.255.119", "192.30.255.120", "192.30.255.121",
-        "192.30.255.122", "192.30.255.123", "192.30.255.124"
-    ]; // Just having the IP address may be fine as the Ultrapeer would ideally be queried
-    let recipient = vec![1]; // Thinking about having the index stored and then translating to current recipient
-    let messages = vec![
-        "\x00Hello!", 
-        "\x01Hi there! How are you doing today?", 
-        "\x00I'm doing well, thanks for asking. How about you?", 
-        "\x01Pretty good, just working on some projects.", 
-        "\x00That's great to hear. What kind of projects are you working on?", 
-        "\x01Oh, just some coding projects. Trying to improve my skills.", 
-        "\x00Nice! Coding can be really rewarding.", 
-        "\x01Absolutely. What about you? What have you been up to?", 
-        "\x00Not much, just testing some terminal rendering logic.", 
-        "\x01That sounds interesting. Is it for a specific application?", 
-        "\x00Yes, it's for a messaging application I'm working on. It's been a fun challenge to design the interface and handle the networking aspects.", 
-        "\x01Cool! Messaging apps are always fun to build. They really help you understand how communication protocols work.", 
-        "\x00Indeed. It's a good way to learn about networking and UI. Plus, it's rewarding to see it all come together.", 
-        "\x01For sure. Are you using any specific libraries or frameworks for the project?", 
-        "\x00Yes, I'm using libp2p for networking and crossterm for terminal UI. Both have been great, though they come with their own learning curves.", 
-        "\x01Great choices! libp2p is powerful for peer-to-peer communication, and crossterm is excellent for terminal-based applications.", 
-        "\x00Exactly. It's been a learning curve, but I'm getting there. The documentation and examples have been really helpful.", 
-        "\x01That's the spirit! Keep at it. The more you work on it, the more you'll learn and improve.", 
-        "\x00Thanks! What kind of coding projects are you working on these days? Anything exciting?", 
-        "\x01I'm building a small game in Rust. It's a simple text-based adventure with branching storylines and some basic mechanics.", 
-        "\x00That sounds awesome! Text-based games are so nostalgic. They remind me of the early days of gaming.", 
-        "\x01They really are. It's been fun designing the story and mechanics. I'm trying to make it engaging and replayable.", 
-        "\x00I can imagine. Are you planning to share it once it's done? Maybe put it on GitHub for others to try out?", 
-        "\x01Yes, I think I will. Sharing it on GitHub seems like a good idea. It'll be interesting to see how people react to it.", 
-        "\x00That's a great idea. I'd love to check it out. Text-based games have a charm that's hard to beat.", 
-        "\x01Thanks! I'll let you know when it's ready. It's still a work in progress, but I'm making steady progress.", 
-        "\x00Looking forward to it. Good luck with the development! I'm sure it'll turn out great.", 
-        "\x01Thanks! And good luck with your messaging app too. It sounds like a really cool project.", 
-        "\x00Appreciate it. Let's both keep pushing forward and learning as we go!", 
-        "\x01Absolutely. Take care and happy coding!"
-    ];
-
-    panic::set_hook(Box::new(|info| {
-        execute!(std::io::stdout(), Clear(ClearType::Purge)).unwrap();
-        execute!(std::io::stdout(), Clear(ClearType::All)).unwrap();
-        execute!(std::io::stdout(), Show).unwrap();
-        disable_raw_mode().expect("Unable to enable raw mode");
-        println!("The program ran into an error and broke, here is the error message: {}", info);
-        exit(1);
-    }));
-
-    // Handles CTRL + C
-    set_handler(move || {
-        execute!(std::io::stdout(), Clear(ClearType::Purge)).unwrap();
-        execute!(std::io::stdout(), Clear(ClearType::All)).unwrap();
-        execute!(std::io::stdout(), Show).unwrap();
-        disable_raw_mode().expect("Unable to enable raw mode");
-        exit(0);
-    })?;
-
-    let flags: Arc<Mutex<EventFlags>> = Arc::new(Mutex::new(EventFlags::new()));
-    flags.lock().unwrap().set_resize();
-
-    let input_field: Arc<Mutex<InputStorage>> = Arc::new(Mutex::new(InputStorage::new()));
-
-    execute!(std::io::stdout(), Hide).unwrap(); // Not supported by all terminals dipshit
-
-    // Spawn the event loop as a separate task
-    let mut flags_clone_event = Arc::clone(&flags); // 分身の術 saving my ass
-    let _event_handler = task::spawn(async move {
-        event_loop(&mut flags_clone_event).await;
-    });
-    // Spawn the input loop as a seperate task
-    let mut flags_clone_input = Arc::clone(&flags);
-    let mut input_field_clone_input = Arc::clone(&input_field);
-    let _input_handler = task::spawn(async move {
-        input_loop(&mut flags_clone_input, &mut input_field_clone_input).await;
-    });
-
-    let flags_clone_screen_change = Arc::clone(&flags);
-    let mut current_screen = flags_clone_screen_change.lock().unwrap().get_screen();
-
+fn main() {
+    let mut terminal = ratatui::init();
     loop {
-        let terminal_resize = flags.lock().unwrap().get_resize();
-        let input_changed = input_field.lock().unwrap().check_input();
-
-        if terminal_resize || (current_screen != flags_clone_screen_change.lock().unwrap().get_screen()) || input_changed {
-            current_screen = flags_clone_screen_change.lock().unwrap().get_screen();
-            let mut terminal = initialize_terminal();
-            let columns = terminal.width;
-            let rows = terminal.height;
-            let compiling_message = flags.lock().unwrap().get_compiling_message();
-
-            if columns < MINCOL || rows < MINROW {
-                execute!(std::io::stdout(), Clear(ClearType::All)).unwrap();
-                println!("Terminal size is too small. Minimum size is {}x{}", MINCOL, MINROW);
+        terminal.draw(|frame| {
+            // Check terminal size
+            let (width, height) = terminal_size().expect("Failed to get terminal size");
+            if width < 79 || height < 23 {
+                // Display a warning if the terminal is too small
+                let warning = Paragraph::new(format!("Terminal size too small. ({},{})", width, height))
+                    .block(Block::default().borders(Borders::ALL).title("Warning"))
+                    .alignment(Alignment::Center);
+                frame.render_widget(warning, frame.area());
+            } else {
+                // Render the main menu if the terminal size is sufficient
+                menu_main(frame);
             }
-            else{
-                let screen = flags.lock().unwrap().get_screen();
+        }).expect("failed to draw frame");
 
-                // Main Screen
-                if screen == 0{
-                    let contacts_clone = contacts.clone();
-                    draw_box(&mut terminal, 0, columns, 0, rows, DOUBLE); // Outside border
-                    draw_line(&mut terminal, 0, columns, rows - 3, rows - 3, SINGLE); // Function menu border
-                    draw_text(&mut terminal, 1, columns - 1, rows - 2, rows - 2, "F1-Help F2-Contacts F3-Compose Message F4-Attach File F5-Send Message F6-Exit"); // Function menu
-                    draw_line(&mut terminal, 0, columns, 2, 2, SINGLE); // Info border
-                    draw_line(&mut terminal, (columns / 3).into(), (columns / 3).into(), 0, rows - 2, SINGLE); // Info divider
-                    draw_text(&mut terminal, 1, 11, 1, 1, "Ultrapeer:"); // Ultrapeer label
-                    render_host(&mut terminal, 11, ((columns / 3) - 1).into(), 1, 1, ultrapeer.clone()); // Ultrapeer
-                    draw_text(&mut terminal, ((columns / 3) + 1).into(), ((columns / 3) + 11).into(), 1, 1, "Recipient:"); // Recipient label
-                    render_host(&mut terminal, ((columns / 3) + 11).into(), columns - 1, 1, 1, vec![contacts_clone[recipient[0] as usize]]); // Recipient
-                    render_chat(&mut terminal, ((columns / 3) + 1).into(), columns - 1, 3, rows - 4, messages.clone(), (0,0));
-                    if !compiling_message {
-                        render_contacts(&mut terminal, 1, (columns / 3).into(), 3, rows - 4, &contacts, (0,0));
-                    }
-                    else {
-                        draw_text(&mut terminal, 1, (columns / 3).into(), 3, rows - 4, &input_field.lock().unwrap().get_input());
-                    }
-                }
-                // Help Screen
-                if screen == 1{
-                    draw_box(&mut terminal, 0, columns, 0, rows, DOUBLE); // Outside border
-                    draw_line(&mut terminal, 0, columns, rows - 3, rows - 3, SINGLE); // Function menu border
-                    draw_text(&mut terminal, 1, columns - 1, rows - 2, rows - 2, "F1-Return F2-Set Ultrapeer F6-Exit"); // Function menu
-                    draw_line(&mut terminal, 1, columns - 1, 2, 2, BOLD); // title underline
-                    draw_text(&mut terminal, ((columns / 2) - 2).into(), ((columns / 2) + 11).into(), 1, 1, "Help"); // Page title
-                    // Help piece one
-                    draw_text(&mut terminal, 1, columns - 1,3,3,"1. Why have my contacts cleared?");
-                    draw_line(&mut terminal, 0, 8,4,4 ,SINGLE);
-                    draw_text(&mut terminal, 1, columns - 1,5,7,"Contacts are the recently contacted peers on your current network, they will clear if the network is disconnected from or if SFS is closed.");
-                    // Help piece two
-                    draw_text(&mut terminal, 1, columns - 1,8,8,"2. How can I find new peers to contact?");
-                    draw_line(&mut terminal, 0, 8,9,9 ,SINGLE);
-                    draw_text(&mut terminal, 1, columns - 1,10,12,"SFS is not intended as the primary means of communications, contacts via PKI must be arranged externally alongside SFS usage.");
-                    // Help piece three
-                    draw_text(&mut terminal, 1, columns - 1,13,13,"3. I want to host an Ultrapeer, how can I?");
-                    draw_line(&mut terminal, 0, 8,14,14 ,SINGLE);
-                    draw_text(&mut terminal, 1, columns - 1,15,17,"Run SFS with flag --ultrapeer <progenitor> where <progenitor> is an optional argument allowing the extension of a SFS network.");
-                }
-                // Contacts Screen
-                if screen == 2{
-                    draw_box(&mut terminal, 0, columns, 0, rows, DOUBLE); // Outside border
-                    draw_line(&mut terminal, 0, columns, rows - 3, rows - 3, SINGLE); // Function menu border
-                    draw_text(&mut terminal, 1, columns - 1, rows - 2, rows - 2, "F1-Return F2-Select Contact F3-Add Contact F4-Remove Contact F6-Exit"); // Function menu
-                    draw_line(&mut terminal, (columns / 2).into(), (columns / 2).into(), 2, rows - 2, SINGLE); // Info divider
-                    draw_line(&mut terminal, 1, columns - 1, 2, 2, BOLD); // title underline
-                    draw_text(&mut terminal, ((columns / 2) - 4).into(), ((columns / 2) + 11).into(), 1, 1, "Contacts"); // Page title
-                    // Change how the render_contacts works to have 2 modes (to do the divider and render all contacts)
-                    render_contacts(&mut terminal, 1, columns - 1, 3, rows - 4, &contacts, (1,(columns / 2).into()));
-                }
-                flags.lock().unwrap().reset_resize();
-                print!("");                 
-            }
+        if matches!(crossterm::event::read().expect("failed to read event"), crossterm::event::Event::Key(_)) {
+            break;
         }
     }
+    ratatui::restore();
+}
 
-    //Ok(()) Its not Ok apparently
+fn menu_main(frame: &mut Frame) {
+    // Example data
+    let ultrapeer = "Ultrapeer Name".to_string();
+    let recipient = "Recipient Name".to_string();
+    let controls = "Press Q to Quit".to_string();
+    let contacts = vec!["Contact 1".to_string(), "Contact 2".to_string(), "Contact 3".to_string()];
+    let messages = vec!["Message 1".to_string(), "Message 2".to_string(), "Message 3".to_string()];
+
+    // Outer layout: Top, Main, and Bottom sections
+    let outer_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(vec![
+            Constraint::Length(3),
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ])
+        .split(frame.area());
+
+    // Top section
+    let top_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(vec![
+            Constraint::Percentage(30),
+            Constraint::Percentage(70),
+        ])
+        .split(outer_layout[0]);
+
+    // Main section
+    let main_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(vec![
+            Constraint::Percentage(30),
+            Constraint::Percentage(70),
+        ])
+        .split(outer_layout[1]);
+
+    // Render top_left
+    let top_left = Paragraph::new(ultrapeer)
+        .block(Block::default().borders(Borders::ALL).title("Ultrapeer"));
+    frame.render_widget(top_left, top_layout[0]);
+
+    // Render top_right
+    let top_right = Paragraph::new(recipient)
+        .block(Block::default().borders(Borders::ALL).title("Recipient"));
+    frame.render_widget(top_right, top_layout[1]);
+
+    // Render main_left
+    let contact_items: Vec<_> = contacts
+        .iter()
+        .map(|c| ratatui::widgets::ListItem::new(c.clone()))
+        .collect();
+    let main_left = ratatui::widgets::List::new(contact_items)
+        .block(Block::default().borders(Borders::ALL).title("Contacts"));
+    frame.render_widget(main_left, main_layout[0]);
+
+    // Render main_right
+    let message_items: Vec<_> = messages
+        .iter()
+        .map(|m| ratatui::widgets::ListItem::new(m.clone()))
+        .collect();
+    let main_right = ratatui::widgets::List::new(message_items)
+        .block(Block::default().borders(Borders::ALL).title("Messages"));
+    frame.render_widget(main_right, main_layout[1]);
+
+    // Render bottom
+    let bottom = Paragraph::new(controls)
+        .block(Block::default().borders(Borders::ALL).title("Controls"));
+    frame.render_widget(bottom, outer_layout[2]);
 }
