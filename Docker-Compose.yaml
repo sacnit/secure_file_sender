@@ -13,14 +13,14 @@ services:
       dockerfile: node_dockerfile
     networks:
       - p2p_network
-    command: ["./target/release/secure_file_sender"]
+    command: ["bash", "-c", "source venv/bin/activate && python secure_file_sender.py", "--mode ultrapeer"]
   node_2:
     build:
       context: .
       dockerfile: node_dockerfile
     networks: 
       - p2p_network
-    command: ["./target/release/secure_file_sender"]
+    command: ["bash", "-c", "source venv/bin/activate && python secure_file_sender.py", "--mode leaf", "--ultrapeer node_1"]
 
 networks:
   p2p_network:

@@ -1,0 +1,13 @@
+
+Traceback (most recent call last):
+  File "/home/sacnit/Documents/vscode/secure_file_sender/env/lib/python3.13/site-packages/pyp2p/sock.py", line 195, in connect
+    self.s.connect((addr, int(port)))
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+ <class 'TimeoutError'> sock.py 195 timed out
+Traceback (most recent call last):
+  File "/home/sacnit/Documents/vscode/secure_file_sender/env/lib/python3.13/site-packages/pyp2p/sock.py", line 195, in connect
+    self.s.connect((addr, int(port)))
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+ <class 'TimeoutError'> sock.py 195 timed out

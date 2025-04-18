@@ -1,11 +1,17 @@
-FROM rust:latest
+FROM python:3.9
 
 WORKDIR /app
 
-COPY Cargo.toml .
+# Install virtualenv and create the virtual environment
+RUN pip install virtualenv && virtualenv venv
 
-COPY src ./src
+COPY requirements.txt .
 
-RUN cargo build --release
+# Activate the virtual environment and install dependencies
+RUN /bin/bash -c "source venv/bin/activate && pip install -r requirements.txt"
 
-CMD ["./target/release/secure_file_sender"]
+# Copy your script into the container
+COPY secure_file_sender.py .
+
+# Command to run the script using the virtual environment
+CMD ["bash", "-c", "source venv/bin/activate && python secure_file_sender.py"]
