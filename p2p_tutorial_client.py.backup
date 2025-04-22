@@ -1,0 +1,239 @@
+import threading
+import time
+from twisted.internet.protocol import Protocol, ClientFactory
+from twisted.internet import reactor, ssl
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+from textual.app import App, ComposeResult
+from textual.containers import Vertical
+from textual.widgets import Log, Input
+from textual.screen import Screen
+from textual.widgets import Button, Static, Collapsible
+import signal
+import sys
+import hashlib
+import queue
+
+response_queue = queue.Queue()  # Queue for server responses
+
+
+def signal_handler(sig, frame):
+    print("\nExiting gracefully...")
+    try:
+        reactor.stop()
+    except:
+        sys.exit(0)
+
+
+def derive_port_from_public_key(public_key_pem):
+    # Hash
+    public_key_hash = hashlib.sha256(public_key_pem.encode("utf-8")).hexdigest()
+    # Convert to int
+    port = int(public_key_hash[:4], 16)
+    # Map
+    return 1024 + (port % (65535 - 1024))
+
+class SecureClient(Protocol):
+    def __init__(self, keypair, listener_port, gui):
+        self.keypair = keypair
+        self.cipher = PKCS1_OAEP.new(self.keypair)  # RSA for encryption/decryption
+        self.listener_port = listener_port  # Port for listening to incoming connections
+        self.gui = gui  # Reference to the GUI for updating output
+
+    def connectionMade(self):
+        self.gui.notify("Connection established with the server.")
+        # Send the public key and listening port to the server
+        public_key = self.keypair.publickey().export_key().decode("utf-8")
+        registration_message = f"READY¬{public_key}¬{self.listener_port}"
+        self.transport.write(registration_message.encode("utf-8"))
+
+    def dataReceived(self, data):
+        try:
+            # Attempt to decrypt the data
+            decrypted_data = self.cipher.decrypt(data)
+            message = decrypted_data.decode("utf-8")
+            response_queue.put(f"Decrypted message from server: {message}")
+            self.gui.notify(f"Decrypted message from server: {message}")
+        except ValueError:
+            # If decryption fails, assume it's plain text
+            try:
+                message = data.decode("utf-8")
+                if ":" in message:
+                    response_queue.put(f"Received client info: {message}")
+                    self.gui.notify(f"Received client info: {message}")
+                    self.connect_to_client(message)
+                else:
+                    response_queue.put(f"Received plain text message from server: {message}")
+                    self.gui.notify(f"Received plain text message from server: {message}")
+            except Exception as e:
+                response_queue.put(f"Error processing message: {e}")
+                self.gui.notify(f"Error processing message: {e}")
+
+    def query_client(self, public_key_pem):
+        # Send a query to the server with the specified public key
+        query_message = f"QUERY_CLIENT¬{public_key_pem}"
+        self.transport.write(query_message.encode("utf-8"))
+        self.gui.notify(f"Query sent for public key:\n{public_key_pem.replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "").replace("\n", "")[-5:]}")
+
+
+class SecureClientFactory(ClientFactory):
+    def __init__(self, keypair, listener_port, gui):
+        self.keypair = keypair
+        self.listener_port = listener_port
+        self.protocol_instance = None
+        self.gui = gui  # Reference to the GUI
+
+    def buildProtocol(self, addr):
+        self.protocol_instance = SecureClient(self.keypair, self.listener_port, self.gui)
+        return self.protocol_instance
+
+    def clientConnectionFailed(self, connector, reason):
+        self.gui.notify(f"Connection failed: {reason}")
+        reactor.stop()
+
+    def clientConnectionLost(self, connector, reason):
+        self.gui.notify(f"Connection lost: {reason}")
+        reactor.stop()
+
+class TaskQueue:
+    def __init__(self):
+        self.queue = []
+        self.lock = threading.Lock()
+        self.condition = threading.Condition(self.lock)
+        self.server_address = "127.0.0.1"
+        self.server_port = 9999
+        
+    def queue_task(self, task):
+        with self.condition:
+            self.queue.append(task)
+            self.condition.notify()
+        
+    def dequeue_task(self):
+        with self.condition:
+            while not self.queue:
+                self.condition.wait()
+            task = self.queue.pop(0)
+            return task
+        
+def client_manager(task_queue):
+    while True:
+        task = task_queue.dequeue_task()
+        match(task):
+            case "connect":
+                reactor.connectSSL(task_queue.server_address, task_queue.server_port, factory, ssl.ClientContextFactory()) # Default server info
+                reactor.run()
+            case "disconnect":
+                reactor.stop()
+
+class SettingsScreen(Screen):
+    def compose(self) -> ComposeResult:
+        yield Static("Settings", id="settings_title")
+        yield Collapsible(Static(content=public_key_pem, id="public_key_contents"),title="Public Key", id="public_key_container")
+        yield Collapsible(Input(id="ultrapeer_address", placeholder="127.0.0.1"), Input(id="ultrapeer_port", placeholder="9999"), title="Ultrapeer Config", id="ultrapeer_container")
+        yield Button("Back", id="back_button")
+        
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "back_button":
+            self.app.pop_screen()  # Go back to the main screen
+
+class GUI(App):
+    CSS = """
+    #main_output {
+        height: 90%; /* Output field takes most of the screen */
+        overflow: auto;
+    }
+    #input_field {
+        height: 10%; /* Input field at the bottom */
+        max-height: 10%; /* Ensure it doesn't grow beyond this */
+        overflow: auto;
+    }
+    """
+
+    def __init__(self, factory):
+        super().__init__()
+        self.factory = factory
+
+    def compose(self) -> ComposeResult:
+        yield Vertical(
+            Log(id="main_output"),
+            Input(id="input_field", placeholder="Enter your command here..."),
+        )
+
+    def on_mount(self) -> None:
+        main_output = self.query_one("#main_output", Log)
+        main_output.write("Welcome to Secure File Sender,\nConfigure your settings and connect to an ultrapeer,\nTo see a list of commands type \"help\"\n")
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        #client_manager_thread
+        
+        input_field = event.input
+        if event.input.id == "input_field":
+            main_output = self.query_one("#main_output", Log)
+            user_input = input_field.value.strip()
+            input_field.value = ""
+
+            if user_input in ["query", "Query", "q", "Q"]:
+                self.add_output("Enter the public key to query (end with an empty line):")
+            elif user_input in ["identity", "Identity", "i", "I"]:
+                self.add_output(public_key_pem + "\n")
+            elif user_input in ["exit", "Exit", "e", "E"]:
+                self.clear_output()
+                task_queue.queue_task("disconnect")
+                time.sleep(0.5)
+                exit(1)
+            elif user_input in ["clear", "Clear", "c", "C"]:
+                self.clear_output()
+            elif user_input in ["settings", "Settings", "s", "S"]:
+                self.push_screen(SettingsScreen())
+            elif user_input in ["join", "Join", "j", "J"]:
+                # Need to actually try connect to the ultrapeer and do a settings check (maybe inc parseargs for command line arguments)
+                # Connect to the server using TLS
+                self.notify("Attempting connection with server")
+                task_queue.queue_task("connect")
+            elif user_input in ["help", "Help", "h", "H"]:
+                main_output.write("""Commands:\n   [q\\query]. Query a pubkey and connect to the peer\n   [i\\identity]. Display your public key\n   [c\\clear]. Clear the output area\n   [s\\settings]. Configure the SFS settings\n   [h\\help]. Displays this message\n   [j\\join]. Join an ultrapeer\n   [e\\exit]. Exit program\n""")
+            else:
+                self.add_output("Invalid command. Please try again.\n")
+        elif event.input.id == "ultrapeer_address":
+            self.notify(f"Ultrapeer IP updated to: {input_field.value.strip()}")
+            self.server_address = input_field.value.strip()
+        elif event.input.id == "ultrapeer_port":
+            self.notify(f"Ultrapeer Port updated to: {input_field.value.strip()}")
+            self.server_port = input_field.value.strip()
+
+    def add_output(self, message: str) -> None:
+        main_output = self.query_one("#main_output", Log)
+        main_output.write(message)
+
+    def clear_output(self) -> None:
+        main_output = self.query_one("#main_output", Log)
+        main_output.clear()
+
+if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Generate RSA keypair
+    keypair = RSA.generate(2048)
+    public_key_pem = keypair.publickey().export_key().decode("utf-8")
+
+    # Derive the listening port from the public key so we have a consistent way of getting the p2p port
+    listener_port = derive_port_from_public_key(public_key_pem)
+
+    # Create the client factory
+    gui = GUI(None)  # Initialize GUI without factory for now
+    factory = SecureClientFactory(keypair, listener_port, gui)
+    gui.factory = factory  # Set the factory in the GUI
+
+    # Start listening for incoming connections on the derived port
+    reactor.listenSSL(
+        listener_port,
+        ClientFactory.forProtocol(lambda: SecureClient(keypair, listener_port, gui)),
+        ssl.ClientContextFactory(),
+    )
+
+    # Run the GUI (this will also run the reactor)
+    task_queue = TaskQueue()
+    global client_manager_thread
+    client_manager_thread= threading.Thread(target=client_manager)
+    gui.run()
