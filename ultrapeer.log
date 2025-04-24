@@ -1,7 +1,25 @@
-2025-04-24 17:32:31 [INFO] Starting secure server on port 9999...
-2025-04-24 17:32:34 [INFO] Connection established with client: 127.0.0.1:46100
-2025-04-24 17:32:34 [INFO] Data received from ['127.0.0.1', '46100'], prefix: CONNECT
-2025-04-24 17:32:44 [INFO] Data received from ['127.0.0.1', '46100'], prefix: QUERY
-2025-04-24 17:32:44 [INFO] Client requesting to query: ['127.0.0.1', '46100']
-2025-04-24 17:32:46 [INFO] Data received from ['127.0.0.1', '46100'], prefix: QUERYPUBKEY
-2025-04-24 17:32:46 [INFO] Pubkey provided by client: ['127.0.0.1', '46100']
+2025-04-24 17:35:27 [INFO] Starting secure server on port 9999...
+2025-04-24 17:35:30 [INFO] Connection established with client: 127.0.0.1:47160
+2025-04-24 17:35:30 [INFO] Data received from ['127.0.0.1', '47160'], prefix: CONNECT
+2025-04-24 17:35:39 [INFO] Data received from ['127.0.0.1', '47160'], prefix: QUERY
+2025-04-24 17:35:39 [INFO] Client requesting to query: ['127.0.0.1', '47160']
+2025-04-24 17:35:41 [INFO] Data received from ['127.0.0.1', '47160'], prefix: QUERYPUBKEY
+2025-04-24 17:35:41 [INFO] Pubkey provided by client: ['127.0.0.1', '47160']
+2025-04-24 18:01:35 [INFO] Connection established with client: 127.0.0.1:55086
+2025-04-24 18:01:35 [INFO] Data received from ['127.0.0.1', '55086'], prefix: CONNECT
+2025-04-24 18:01:47 [INFO] Data received from ['127.0.0.1', '47160'], prefix: QUERY
+2025-04-24 18:01:47 [INFO] Client requesting to query: ['127.0.0.1', '47160']
+2025-04-24 18:01:49 [INFO] Data received from ['127.0.0.1', '47160'], prefix: QUERYPUBKEY
+2025-04-24 18:01:49 [INFO] Pubkey provided by client: ['127.0.0.1', '47160']
+2025-04-24 18:02:00 [INFO] Data received from ['127.0.0.1', '55086'], prefix: QUERY
+2025-04-24 18:02:00 [INFO] Client requesting to query: ['127.0.0.1', '55086']
+2025-04-24 18:02:02 [INFO] Data received from ['127.0.0.1', '55086'], prefix: QUERYPUBKEY
+2025-04-24 18:02:02 [INFO] Pubkey provided by client: ['127.0.0.1', '55086']
+2025-04-24 18:02:13 [INFO] Data received from ['127.0.0.1', '55086'], prefix: QUERY
+2025-04-24 18:02:13 [INFO] Client requesting to query: ['127.0.0.1', '55086']
+2025-04-24 18:02:15 [INFO] Data received from ['127.0.0.1', '55086'], prefix: QUERYPUBKEY
+2025-04-24 18:02:15 [INFO] Pubkey provided by client: ['127.0.0.1', '55086']
+2025-04-24 18:02:28 [INFO] Data received from ['127.0.0.1', '55086'], prefix: QUERY
+2025-04-24 18:02:28 [INFO] Client requesting to query: ['127.0.0.1', '55086']
+2025-04-24 18:02:31 [INFO] Data received from ['127.0.0.1', '55086'], prefix: QUERYPUBKEY
+2025-04-24 18:02:31 [INFO] Pubkey provided by client: ['127.0.0.1', '55086']

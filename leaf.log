@@ -1,5 +1,11 @@
-2025-04-24 17:32:34 [INFO] Data received from  host='127.0.0.1: port=9999, prefix: CONNECTED
-2025-04-24 17:32:34 [INFO] Connected to ultrapeer:  host='127.0.0.1: port=9999
-2025-04-24 17:32:44 [INFO] Data received from  host='127.0.0.1: port=9999, prefix: GIMME
-2025-04-24 17:32:44 [INFO] Server wants query
-2025-04-24 17:32:46 [INFO] Data received from  host='127.0.0.1: port=9999, prefix: HEREYAGO
+2025-04-24 18:01:35 [INFO] Data received from  host='127.0.0.1: port=9999, prefix: CONNECTED
+2025-04-24 18:01:35 [INFO] Connected to ultrapeer:  host='127.0.0.1: port=9999
+2025-04-24 18:02:00 [INFO] Data received from  host='127.0.0.1: port=9999, prefix: GIMME
+2025-04-24 18:02:00 [INFO] Server wants query
+2025-04-24 18:02:02 [INFO] Data received from  host='127.0.0.1: port=9999, prefix: HEREYAGO
+2025-04-24 18:02:13 [INFO] Data received from  host='127.0.0.1: port=9999, prefix: GIMME
+2025-04-24 18:02:13 [INFO] Server wants query
+2025-04-24 18:02:15 [INFO] Data received from  host='127.0.0.1: port=9999, prefix: HEREYAGO
+2025-04-24 18:02:28 [INFO] Data received from  host='127.0.0.1: port=9999, prefix: GIMME
+2025-04-24 18:02:28 [INFO] Server wants query
+2025-04-24 18:02:31 [INFO] Data received from  host='127.0.0.1: port=9999, prefix: HEREYAGO

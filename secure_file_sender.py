@@ -1,18 +1,13 @@
+import hashlib
 import os
 import threading
-import warnings
-from twisted.internet import reactor, ssl, threads
-from twisted.internet.protocol import Protocol, ClientFactory
 import logging
+import argparse
+from twisted.internet import reactor, ssl, threads
+from twisted.internet.protocol import Protocol, Factory, ClientFactory
 from Crypto.PublicKey import RSA
 from OpenSSL import crypto, SSL
-import argparse
-import logging
-from twisted.internet.protocol import Protocol, Factory
-from twisted.internet import reactor, ssl
-from OpenSSL import crypto, SSL
 import warnings
-import threading
 
 # Client Behaviour
 
@@ -41,6 +36,12 @@ class State:
                 return self.querying
             case _:
                 pass
+
+def derive_port(input):
+    hashed_key = hashlib.sha256(input).digest()
+    key_int = int.from_bytes(hashed_key, byteorder='big')
+    port = 5000 + (key_int % (9998 - 5000))
+    return port
 
 # Take input from multiple lines, with an empty line stopping the input
 def multi_input():
@@ -94,6 +95,16 @@ class LeafProtocol(Protocol):
                     break
                 case "identity":
                     print(f"Identity:\n{keypair.public_key().export_key().decode('utf-8')}")
+                    
+    # Take a wild guess as to the purpose of this function...       
+    def send_to_leaf(self):
+        self.transport.write("data".encode('utf-8'), ("host ip", 9999999999)) # Do more shite here
+        pass
+    
+    # This ones a real brain tickler
+    def received_from_leaf(self):
+        # Have a prefix for communication to redirect to here from recieving data
+        pass
             
 class LeafFactory(ClientFactory):
     protocol = LeafProtocol
@@ -235,6 +246,7 @@ if __name__ == "__main__":
         context_factory = SSLContextFactory()
         factory = LeafFactory()
         reactor.connectSSL(args.ultrapeer, args.port, factory, context_factory)
+        reactor.listenSSL(derive_port(keypair.public_key().export_key()), UltrapeerFactory(), SSLContextFactory())
         reactor.run()
     
     # Running in ultrapeer mode
