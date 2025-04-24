@@ -171,9 +171,6 @@ class UltrapeerProtocol(Protocol):
             logger.error(f"Error processing data: {e}")
 
 class UltrapeerFactory(Factory):
-    def __init__(self):
-        self.clients = {}  # Dictionary of clients
-
     def buildProtocol(self, addr):
         return UltrapeerProtocol(self)
 
