@@ -3,6 +3,7 @@ from twisted.internet.protocol import Protocol, Factory
 from twisted.internet import reactor, ssl
 from OpenSSL import crypto, SSL
 import warnings
+import threading
 
 # Configure logging
 logging.basicConfig(
@@ -11,6 +12,19 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 logger = logging.getLogger(__name__)
+
+class Synchronizer():
+    def __init__(self):
+        self.clientele: dict[str, tuple[str, int]] = {}
+        self.clientele_lock = threading.Lock()
+        
+    def add_peer(self, key, peer):
+        with self.clientele_lock:
+            self.clientele[key] = peer
+            
+    def query_peer(self, key):
+        with self.clientele_lock:
+            return self.clientele.get(key)
 
 class SecureServer(Protocol):
     def __init__(self, factory):
@@ -33,22 +47,24 @@ class SecureServer(Protocol):
         logger.info(f"Client at address disconnected: {client}")
 
     def dataReceived(self, data):
+        client_info = str(self.transport.getPeer()).replace("IPv4Address(type='TCP', host='", "").replace("', port","").replace(")","").split("=")
         try:
             message = data.decode('utf-8')
             logger.info(f"Data recieved, prefix: {message.split("¬")[0]}")
             if message.startswith("CONNECT¬"):
                 # Handle client registration
-                pass
+                client_keypair = message.split("¬")[1].removeprefix("b\'").removesuffix("\'").replace("\\n","\n")
+                #logger.info(f"Public key provided:\n{client_keypair}") # For debug purposes, so i can differentiate between em
+                synchronizer.add_peer(message.split("¬")[1], (client_info[0], int(client_info[1])))
+                self.transport.write(f"CONNECTED¦".encode('utf-8')) # Replace with an identity to prepend
+            if message.startswith("QUERY¬"):
+                logger.info(f"Client requesting to query: {client_info}")
+                self.transport.write(f"GIMME¦".encode('utf-8')) # Replace with an identity to prepend
+            if message.startswith("QUERYPUBKEY¬"):
+                logger.info(f"Pubkey provided by client: {client_info}")
+                self.transport.write(f"HEREYAGO¦{synchronizer.query_peer(message.split("¬")[1])}".encode('utf-8'))
         except Exception as e:
             logger.error(f"Error processing data: {e}")
-
-    def send_encrypted_message(self, message):
-        ## Send shit to client
-        pass
-
-    def send_client_info(self):
-        ## This is here for querying
-        pass
 
 class SecureServerFactory(Factory):
     def __init__(self):
@@ -93,4 +109,5 @@ class InMemoryContextFactory(ssl.ContextFactory):
 if __name__ == "__main__":
     logger.info("Starting secure server on port 9999...")
     reactor.listenSSL(9999, SecureServerFactory(), InMemoryContextFactory())
+    synchronizer = Synchronizer()
     reactor.run()
