@@ -5,6 +5,7 @@ import logging
 import argparse
 from twisted.internet import reactor, ssl, threads
 from twisted.internet.protocol import Protocol, Factory, ClientFactory
+from twisted.internet.endpoints import SSL4ServerEndpoint, SSL4ClientEndpoint
 from Crypto.PublicKey import RSA
 from OpenSSL import crypto, SSL
 import warnings
@@ -86,8 +87,7 @@ class LeafProtocol(Protocol):
             response = response.replace("\'","").replace("(","").replace(")","").split(", ")
             leaf_address = (response[0], int(response[1]))
             state.contacts[state.current_contact] = leaf_address
-            print(f"Peer returned: {leaf_address}")
-            self.send_to_leaf(state.current_contact)
+            self.leaf_to_leaf(state.current_contact)
         # Normal case UI
         while run_ui:
             user_input = input("> ")
@@ -106,19 +106,15 @@ class LeafProtocol(Protocol):
                     break
                 case "identity":
                     print(f"Identity:\n{keypair.public_key().export_key().decode('utf-8')}")
+                    print(f"Derived port: {derive_port(keypair.public_key().export_key())}")
                     
     # Take a wild guess as to the purpose of this function...       
-    def send_to_leaf(self, pubkey):
+    def leaf_to_leaf(self, pubkey):
         # This will eventually need to facilitate files (AS ITS A SECURE FILE SENDER)
-        data = input(">> ")
-        self.transport.write(f"GABAGOOL⇝{data}".encode('utf-8'), state.contacts.get(pubkey)) # Do more shite here
-        pass
-    
-    # This ones a real brain tickler
-    def received_from_leaf(self, data):
-        # Have a prefix for communication to redirect to here from recieving data
-        print(f"<< {data.decode('utf-8').split("⇝")[1]}")
-        pass
+        print(f"{state.contacts.get(pubkey)[0]}:{state.contacts.get(pubkey)[1]}")
+        reactor.connectSSL(state.contacts.get(pubkey)[0], state.contacts.get(pubkey)[1], P2PFactory(), SSLContextFactory())
+        # p2p_startpoint = SSL4ClientEndpoint(reactor, state.contacts.get(pubkey)[0], state.contacts.get(pubkey)[1], SSLContextFactory())
+        # p2p_startpoint.connect(P2PFactory()).addErrback(lambda failure: logger.error(f"Connection error: {failure}"))
             
 class LeafFactory(ClientFactory):
     protocol = LeafProtocol
@@ -230,6 +226,28 @@ class SSLContextFactory(ssl.ContextFactory):
             # )
         return ctx
 
+# P2P Protocol
+
+class P2PProtocol(Protocol):
+    def connectionMade(self):
+        self.transport.write(f"PING¦¬¦{input(">> ")}")
+        pass
+    def dataReceived(self, data):
+        print(f"Data recieved: {data.decode('utf-8')}\n")
+        self.transport.write(f"PING¦¬¦{input(">> ")}")
+    
+class P2PFactory(Factory):
+    def buildProtocol(self, addr):
+        print("HOLY SHIT ITS RUNNING")
+        return P2PProtocol()
+
+    def clientConnectionFailed(self, connector, reason):
+        logger.warning(f"Client connection failed on connector: {connector}")
+        try:
+            reactor.stop()
+        except:
+            pass
+
 if __name__ == "__main__":
     # Handle arguments
     parser = argparse.ArgumentParser(
@@ -257,10 +275,15 @@ if __name__ == "__main__":
         logger = logging.getLogger(__name__)
         state = State()
         keypair = RSA.generate(2048)
+        print(f"\n{keypair.public_key().export_key()}\n")
         context_factory = SSLContextFactory()
         factory = LeafFactory()
         reactor.connectSSL(args.ultrapeer, args.port, factory, context_factory)
-        reactor.listenSSL(derive_port(keypair.public_key().export_key()), UltrapeerFactory(), SSLContextFactory())
+        reactor.listenSSL(derive_port(keypair.public_key().export_key()), P2PFactory(), SSLContextFactory())
+        # p2p_endpoint = SSL4ServerEndpoint(reactor, derive_port(keypair.public_key().export_key()), SSLContextFactory())
+        # p2p_endpoint.listen(P2PFactory())
+        # p2p_startpoint = None
+        #reactor.listenSSL(derive_port(keypair.public_key().export_key()), UltrapeerFactory(), SSLContextFactory())
         reactor.run()
     
     # Running in ultrapeer mode
