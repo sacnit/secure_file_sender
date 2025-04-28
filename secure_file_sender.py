@@ -1,8 +1,11 @@
 import hashlib
 import os
+import keyboard
 import threading
 import logging
 import argparse
+import time
+import curses
 from twisted.internet import reactor, ssl, threads
 from twisted.internet.protocol import Protocol, Factory, ClientFactory
 from twisted.internet.endpoints import SSL4ServerEndpoint, SSL4ClientEndpoint
@@ -14,46 +17,150 @@ import warnings
 
 # For handling the state of the program and TUI
 class State:
-    def __init__(self):
+    def __init__(self, UPFactory, LFactory):
+        self.UPFactory: LeafFactory = UPFactory
+        self.LFactory: P2PFactory = LFactory
         self.connected = False # Is the leaf connected to an ultrapeer
         self.querying = False # Is the leaf trying to query for a leafs address
+        self.connected_to_leaf = False # Is the leaf connected to another leaf
         self.contacts: dict[str, tuple[str, int]] = {} # The contacts list, add peeps to it when they are queried
         self.current_contact = ""
-        
-    # Take a guess chucklenuts
-    def set_state(self, state, value):
-        match state:
-            case "connected":
-                self.connected = value
-            case "querying":
-                self.querying = value
-            case _:
-                pass
-    
-    # Take a guess chucklenuts
-    def get_state(self, state):
-        match state:
-            case "connected":
-                return self.connected
-            case "querying":
-                return self.querying
-            case _:
-                pass
 
-def derive_port(input):
-    hashed_key = hashlib.sha256(input).digest()
-    key_int = int.from_bytes(hashed_key, byteorder='big')
-    port = 5000 + (key_int % (9998 - 5000))
-    return port
+    # for rendering the TUI and taking user input to the correct locations
+    def tui(self):
+        running = True
+        while running:
+            # Check to see what state the program is in
+            # Connected to an ultrapeer
+            # Can take inputs (Identity, Exit, Query, Help)
+            if self.connected_to_leaf: # If connected to a leaf it should be handled instead of the ultrapeer connection
+                # ------------------------------------------------------------------------------------------------
+                global_stdscr.nodelay(True)
+                global_stdscr.addstr(">> ")
+                buffer_key = None
+                
+                while True:
+                    key = global_stdscr.getch()
+                    if key != -1 and chr(key).isprintable():
+                        buffer_key = chr(key)
+                        break
+                global_stdscr.addstr(buffer_key)
+                global_stdscr.refresh()
+                global_stdscr.nodelay(False)
+                curses.nocbreak()
+                global_stdscr.keypad(False)
+                curses.echo()
+                user_input = buffer_key + global_stdscr.getstr().decode('utf-8')
+                # ------------------------------------------------------------------------------------------------
+                if not user_input:
+                    # Its null so it was interrupted
+                    return
+                elif user_input.lower() == "exit":
+                    global_stdscr.addstr("Shutting down...")
+                    running = False
+                    try:
+                        reactor.stop()
+                        factory.stopFactory()
+                    except:
+                        os._exit(1)
+                    os._exit(1)
+                else:
+                    state.LFactory.client_instance.dataSend(user_input)
+                pass
+            elif self.querying: # We have been told to give it the public key
+                global_stdscr.addstr("Provide public key:")
+                pubkey = self.multi_input(global_stdscr)
+                state.current_contact = pubkey
+                self.UPFactory.client_instance.SendMessage(f"QUERYPUBKEY¬{pubkey}")
+                running = False
+                self.querying = False
+                pass
+            elif self.connected: # If connected to an ultrapeer
+                # ------------------------------------------------------------------------------------------------
+                global_stdscr.nodelay(True)
+                global_stdscr.addstr("> ")
+                buffer_key = None
+                
+                while True:
+                    key = global_stdscr.getch()
+                    if key != -1 and chr(key).isprintable():
+                        buffer_key = chr(key)
+                        break
+                global_stdscr.addstr(buffer_key)
+                global_stdscr.refresh()
+                global_stdscr.nodelay(False)
+                curses.nocbreak()
+                global_stdscr.keypad(False)
+                curses.echo()
+                user_input = buffer_key + global_stdscr.getstr().decode('utf-8')
+                # ------------------------------------------------------------------------------------------------
+                if not user_input:
+                    # Its null so it was interrupted
+                    return
+                elif user_input.lower() == "exit":
+                    global_stdscr.addstr("Shutting down...")
+                    running = False
+                    try:
+                        reactor.stop()
+                        factory.stopFactory()
+                    except:
+                        os._exit(1)
+                    os._exit(1)
+                elif user_input.lower() == "identity":
+                    global_stdscr.addstr(f"Identity:\n{keypair.public_key().export_key().decode('utf-8')}")
+                elif user_input.lower() == "query":
+                    running = False
+                    self.UPFactory.client_instance.SendMessage("QUERY¬")
+                else: # The help command will be treated like an error as i cannot be bothered to introduce more logic yet
+                    global_stdscr.addstr(f"Ultrapeer commands:\n\"Identity\": Display  public key\n\"Exit\": Exit program\n\"Query\": Query and connect to a leaf identified by submitted public key\n\"Help\": Display this message")
+            time.sleep(0.01) # Just to make it a lil less spammy when nothing is happening
 
-# Take input from multiple lines, with an empty line stopping the input
-def multi_input():
+    # I need a consistent way to get a port fromm both an exported key and a multi-line inputted key
+    def derive_port(self, input):
+        try:
+            hashed_key = hashlib.sha256(input).digest()
+            key_int = int.from_bytes(hashed_key, byteorder='big')
+            port = 5000 + (key_int % (9998 - 5000))
+            return port
+        except:
+            hashed_key = hashlib.sha256(bytes(input)).digest()
+            key_int = int.from_bytes(hashed_key, byteorder='big')
+            port = 5000 + (key_int % (9998 - 5000))
+            return port
+
+    # Take input from multiple lines, with an empty line stopping the input
+    def multi_input(self, stdscr):
+        curses.curs_set(1)  # Show the cursor
+        stdscr.keypad(True)
+        stdscr.addstr("Enter multiple lines (Press Enter on an empty line to stop):\n")
+
         multiline_input = []
+        current_line = ""
+
         while True:
-            line = input()
-            if not line:
-                break
-            multiline_input.append(line)    
+            key = stdscr.getch()
+
+            if key == ord("\n"):  # Enter key pressed
+                if not current_line:  # Stop on empty line
+                    break
+                multiline_input.append(current_line)
+                current_line = ""  # Reset input line
+            elif key == curses.KEY_BACKSPACE or key == 127:  # Handle backspace
+                if current_line:
+                    current_line = current_line[:-1]
+            elif key != -1 and chr(key).isprintable():  # Add printable characters
+                current_line += chr(key)
+
+            # Refresh display
+            stdscr.clear()  # Clears the screen so previous input isn't reprinted
+            stdscr.addstr("Enter multiple lines (Press Enter on an empty line to stop):\n")
+            for idx, line in enumerate(multiline_input + [current_line]):  # Display both stored & active lines
+                stdscr.addstr(idx + 1, 0, line)
+
+            stdscr.refresh()
+        curses.nocbreak()
+        stdscr.keypad(False)
+        curses.echo()
         return b"\n".join([s.encode('utf-8') for s in multiline_input])
 
 class LeafProtocol(Protocol):
@@ -62,77 +169,43 @@ class LeafProtocol(Protocol):
         self.transport.write(f"CONNECT¬{keypair.public_key().export_key()}".encode('utf-8'))
         self.factory.client_instance = self
 
-    # Against all warnings I am writing the TUI within the recieving data function because why not
     def dataReceived(self, data):
-        if data.decode('utf-8').startswith("GABAGOOL⇝"):
-            self.received_from_leaf(data)
-        run_ui = True
-        peer_info = str(self.transport.getPeer()).split(",")
-        peer_address = peer_info[1].removeprefix("host=").strip("\'")
-        peer_port = peer_info[2].removeprefix("port=").strip("\'")
-        peer = f"{peer_address}:{peer_port}".removeprefix("\'").removesuffix(")")
-        logger.info(f"Data received from {peer}, prefix: {data.decode('utf-8').split("¦")[0]}")
-        if data.decode('utf-8').startswith("CONNECTED¦") and not state.get_state("connected"):
-            logger.info(f"Connected to ultrapeer: {peer}")
-            state.set_state("connected", True)
-        if data.decode('utf-8').startswith("GIMME¦") and state.get_state("querying"):
-            state.set_state("querying", False)
-            logger.info("Server wants query")
-            pubkey = multi_input()
-            state.current_contact = pubkey
-            self.transport.write(f"QUERYPUBKEY¬{pubkey}".encode('utf-8'))
-            run_ui = False
-        if data.decode('utf-8').startswith("HEREYAGO¦") and not state.get_state("querying"):
-            response = data.decode('utf-8').split("¦")[1]
-            response = response.replace("\'","").replace("(","").replace(")","").split(", ")
-            leaf_address = (response[0], int(response[1]))
-            state.contacts[state.current_contact] = leaf_address
-            self.leaf_to_leaf(state.current_contact)
-        # Normal case UI
-        while run_ui:
-            user_input = input("> ")
-            match user_input.lower():
-                case "exit":
-                    print("Shutting down...")
-                    try:
-                        reactor.stop()
-                        factory.stopFactory()
-                    except:
-                        os._exit(1)
-                    os._exit(1)
-                case "query":
-                    self.transport.write("QUERY¬".encode('utf-8'))
-                    state.set_state("querying", True)
-                    break
-                case "identity":
-                    print(f"Identity:\n{keypair.public_key().export_key().decode('utf-8')}")
-                    print(f"Derived port: {derive_port(keypair.public_key().export_key())}")
-                    
-    # Take a wild guess as to the purpose of this function...       
-    def leaf_to_leaf(self, pubkey):
-        # This will eventually need to facilitate files (AS ITS A SECURE FILE SENDER)
-        print(f"{state.contacts.get(pubkey)[0]}:{state.contacts.get(pubkey)[1]}")
-        reactor.connectSSL(state.contacts.get(pubkey)[0], state.contacts.get(pubkey)[1], P2PFactory(), SSLContextFactory())
-        # p2p_startpoint = SSL4ClientEndpoint(reactor, state.contacts.get(pubkey)[0], state.contacts.get(pubkey)[1], SSLContextFactory())
-        # p2p_startpoint.connect(P2PFactory()).addErrback(lambda failure: logger.error(f"Connection error: {failure}"))
+        # CONNECTED¦ for successful connection
+        # GIMME¦ for requesting public key to query
+        # HEREYAGO¦ for address response to query
+        recieved = data.decode('utf-8')
+        if recieved.startswith("CONNECTED¦"):
+            state.connected = True
+        elif recieved.startswith("GIMME¦"):
+            state.querying = True
+        elif recieved.startswith("HEREYAGO¦"):
+            leaf_address = recieved.split("¦")[1][1:-1].replace("'","").split(",")[0] # Assume theres some data afterwards
+            global_stdscr.addstr("Leaf identified")
+            state.LFactory = P2PFactory()
+            reactor.connectSSL(leaf_address, state.derive_port(state.current_contact), state.LFactory, SSLContextFactory())
+            return # Nothing else needed from here as this protocols functions should take over
+        state.tui() # Render the TUI
+        
+    def SendMessage(self, data):
+        self.transport.write(data.encode('utf-8'))
             
 class LeafFactory(ClientFactory):
     protocol = LeafProtocol
-    client_instance = None
+    client_instance: LeafProtocol = None
 
     def clientConnectionFailed(self, connector, reason):
         logger.warning("Client connection failed.")
-        try:
-            reactor.stop()
-        except:
-            pass
+        # try:
+        #     reactor.stop()
+        # except:
+        #     pass
 
     def clientConnectionLost(self, connector, reason):
         logger.warning("Client connection lost.")
-        try:
-            reactor.stop()
-        except:
-            pass
+        # try:
+        #     reactor.stop()
+        # except:
+        #     pass
 
 # Server Behaviour
 
@@ -230,77 +303,99 @@ class SSLContextFactory(ssl.ContextFactory):
 
 class P2PProtocol(Protocol):
     def connectionMade(self):
-        self.transport.write(f"PING¦¬¦{input(">> ")}")
-        pass
+        global_stdscr.addstr("Connection made")
+        state.connected_to_leaf = True
+        self.factory.client_instance = self
+        state.tui()
+        # self.transport.write(f"PING¦¬¦{input(">> ")}".encode('utf-8'))
+
     def dataReceived(self, data):
-        print(f"Data recieved: {data.decode('utf-8')}\n")
-        self.transport.write(f"PING¦¬¦{input(">> ")}")
+        global_stdscr.addstr(f"<< {data.decode('utf-8')}\n")
+        state.tui()
+        
+    def dataSend(self, data):
+        self.transport.write(data.encode('utf-8'))
     
-class P2PFactory(Factory):
-    def buildProtocol(self, addr):
-        print("HOLY SHIT ITS RUNNING")
-        return P2PProtocol()
+class P2PFactory(ClientFactory):
+    protocol = P2PProtocol # Oops forgot this part
+    client_instance: P2PProtocol = None
 
     def clientConnectionFailed(self, connector, reason):
-        logger.warning(f"Client connection failed on connector: {connector}")
-        try:
-            reactor.stop()
-        except:
-            pass
+        logger.warning(f"Client connection failed on connector: {connector}\n{reason}")
+        state.connected_to_leaf = False
+        # try:
+        #     reactor.stop()
+        # except:
+        #     pass
+    
+    def clientConnectionLost(self, connector, reason):
+        logger.warning(f"Client connection lost on connector: {connector}\n{reason}")
+        state.connected_to_leaf = False
+        # try:
+        #     reactor.stop()
+        # except:
+        #     pass
 
-if __name__ == "__main__":
+def main(stdscr):
+    global global_stdscr
+    global_stdscr = stdscr
+    global logger
     # Handle arguments
     parser = argparse.ArgumentParser(
         prog="Secure File Sender",
         description="A secure communication application",
         epilog="Run as either an ultrapeer or peer"
     )
-    parser.add_argument("-M", "--mode", dest="mode", default="leaf",
+    parser.add_argument("-m", "--mode", dest="mode", default="leaf",
                         help="operating mode (default: leaf)")
-    parser.add_argument("-U", "--ultrapeer", dest="ultrapeer", default="127.0.0.1",
+    parser.add_argument("-u", "--ultrapeer", dest="ultrapeer", default="127.0.0.1",
                         help="Ultrapeer host address (default: 127.0.0.1)")
-    parser.add_argument("-P", "--port", dest="port", type=int, default=9999,
+    parser.add_argument("-p", "--port", dest="port", type=int, default=9999,
                         help="Ultrapeer port number (default: 9999)")
     args = parser.parse_args()
     
-    # Running in leaf mode
-    if args.mode == "leaf":
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s [%(levelname)s] %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-            filename="leaf.log",
-            filemode="w"
-        )
-        logger = logging.getLogger(__name__)
-        state = State()
-        keypair = RSA.generate(2048)
-        print(f"\n{keypair.public_key().export_key()}\n")
-        context_factory = SSLContextFactory()
-        factory = LeafFactory()
-        reactor.connectSSL(args.ultrapeer, args.port, factory, context_factory)
-        reactor.listenSSL(derive_port(keypair.public_key().export_key()), P2PFactory(), SSLContextFactory())
-        # p2p_endpoint = SSL4ServerEndpoint(reactor, derive_port(keypair.public_key().export_key()), SSLContextFactory())
-        # p2p_endpoint.listen(P2PFactory())
-        # p2p_startpoint = None
-        #reactor.listenSSL(derive_port(keypair.public_key().export_key()), UltrapeerFactory(), SSLContextFactory())
-        reactor.run()
-    
-    # Running in ultrapeer mode
-    elif args.mode == "ultrapeer":
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s [%(levelname)s] %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-            filename="ultrapeer.log",
-            filemode="w"
-        )
-        logger = logging.getLogger(__name__)
-        logger.info("Starting secure server on port 9999...")
-        reactor.listenSSL(9999, UltrapeerFactory(), SSLContextFactory())
-        synchronizer = Synchronizer()
-        reactor.run()
-    
-    # They messed up the inputs
-    else:
+    try:
+        # Assume if an error occurs, that its the inputs that messed up
+        # Running in leaf mode
+        if args.mode == "leaf":
+            global state
+            global keypair
+            global factory
+            keypair = RSA.generate(2048)
+            logging.basicConfig(
+                level=logging.INFO,
+                format="%(asctime)s [%(levelname)s] %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+                filename="leaf.log",
+                filemode="w"
+            )
+            logger = logging.getLogger(__name__)
+            context_factory = SSLContextFactory()
+            factory = LeafFactory()
+            p2pfactory = P2PFactory()
+            state = State(factory, p2pfactory)
+            reactor.connectSSL(args.ultrapeer, args.port, factory, context_factory) # If it doesnt actually connect to anything, this program just kinda sits there... Waiting...
+            reactor.listenSSL(state.derive_port(keypair.public_key().export_key()), state.LFactory, SSLContextFactory())
+            reactor.run()
+        
+        # Running in ultrapeer mode
+        elif args.mode == "ultrapeer":
+            global synchronizer
+            logging.basicConfig(
+                level=logging.INFO,
+                format="%(asctime)s [%(levelname)s] %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+                filename="ultrapeer.log",
+                filemode="w"
+            )
+            logger = logging.getLogger(__name__)
+            logger.info(f"Starting secure server on port {args.port}...")
+            reactor.listenSSL(args.port, UltrapeerFactory(), SSLContextFactory())
+            synchronizer = Synchronizer()
+            reactor.run()
+    except Exception as e:
+        # They messed up the inputs
+        global_stdscr.addstr(f"{e}\n")
         parser.print_help()
+        
+curses.wrapper(main)
