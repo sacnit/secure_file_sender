@@ -1,17 +1,12 @@
-FROM python:3.9
+FROM python:3.13.3
 
 WORKDIR /app
 
-# Install virtualenv and create the virtual environment
-RUN pip install virtualenv && virtualenv venv
-
 COPY requirements.txt .
 
-# Activate the virtual environment and install dependencies
-RUN /bin/bash -c "source venv/bin/activate && pip install -r requirements.txt"
+RUN pip install --requirement requirements.txt
 
 # Copy your script into the container
 COPY secure_file_sender.py .
 
-# Command to run the script using the virtual environment
-CMD ["bash", "-c", "source venv/bin/activate && python secure_file_sender.py"]
+CMD ["python", "secure_file_sender.py"]

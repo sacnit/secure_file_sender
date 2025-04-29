@@ -1,4 +1,1 @@
-2025-04-28 18:15:50 [WARNING] Client connection failed on connector: <twisted.internet.tcp.Connector instance at 0x70e4d089b9d0 disconnected IPv4Address(type='TCP', host='on', port=9879)>
-[Failure instance: Traceback (failure with no frames): <class 'twisted.internet.error.DNSLookupError'>: DNS lookup failed: on.
-]
-2025-04-28 18:16:19 [WARNING] Client connection lost.
+2025-04-29 16:59:51 [WARNING] Client connection failed.

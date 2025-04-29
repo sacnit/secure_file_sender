@@ -6,6 +6,7 @@ import logging
 import argparse
 import time
 import curses
+import json
 from twisted.internet import reactor, ssl, threads
 from twisted.internet.protocol import Protocol, Factory, ClientFactory
 from twisted.internet.endpoints import SSL4ServerEndpoint, SSL4ClientEndpoint
@@ -35,7 +36,6 @@ class State:
             # Can take inputs (Identity, Exit, Query, Help)
             if self.connected_to_leaf: # If connected to a leaf it should be handled instead of the ultrapeer connection
                 # ------------------------------------------------------------------------------------------------
-                global_stdscr.nodelay(True)
                 global_stdscr.addstr(">> ")
                 buffer_key = None
                 
@@ -45,12 +45,9 @@ class State:
                         buffer_key = chr(key)
                         break
                 global_stdscr.addstr(buffer_key)
-                global_stdscr.refresh()
-                global_stdscr.nodelay(False)
-                curses.nocbreak()
-                global_stdscr.keypad(False)
                 curses.echo()
                 user_input = buffer_key + global_stdscr.getstr().decode('utf-8')
+                curses.noecho()
                 # ------------------------------------------------------------------------------------------------
                 if not user_input:
                     # Its null so it was interrupted
@@ -77,7 +74,6 @@ class State:
                 pass
             elif self.connected: # If connected to an ultrapeer
                 # ------------------------------------------------------------------------------------------------
-                global_stdscr.nodelay(True)
                 global_stdscr.addstr("> ")
                 buffer_key = None
                 
@@ -87,12 +83,9 @@ class State:
                         buffer_key = chr(key)
                         break
                 global_stdscr.addstr(buffer_key)
-                global_stdscr.refresh()
-                global_stdscr.nodelay(False)
-                curses.nocbreak()
-                global_stdscr.keypad(False)
                 curses.echo()
                 user_input = buffer_key + global_stdscr.getstr().decode('utf-8')
+                curses.noecho()
                 # ------------------------------------------------------------------------------------------------
                 if not user_input:
                     # Its null so it was interrupted
@@ -107,12 +100,12 @@ class State:
                         os._exit(1)
                     os._exit(1)
                 elif user_input.lower() == "identity":
-                    global_stdscr.addstr(f"Identity:\n{keypair.public_key().export_key().decode('utf-8')}")
+                    global_stdscr.addstr(f"Identity:\n{keypair.public_key().export_key().decode('utf-8')}\n")
                 elif user_input.lower() == "query":
                     running = False
                     self.UPFactory.client_instance.SendMessage("QUERY¬")
                 else: # The help command will be treated like an error as i cannot be bothered to introduce more logic yet
-                    global_stdscr.addstr(f"Ultrapeer commands:\n\"Identity\": Display  public key\n\"Exit\": Exit program\n\"Query\": Query and connect to a leaf identified by submitted public key\n\"Help\": Display this message")
+                    global_stdscr.addstr(f"Ultrapeer commands:\n\"Identity\": Display  public key\n\"Exit\": Exit program\n\"Query\": Query and connect to a leaf identified by submitted public key\n\"Help\": Display this message\n")
             time.sleep(0.01) # Just to make it a lil less spammy when nothing is happening
 
     # I need a consistent way to get a port fromm both an exported key and a multi-line inputted key
@@ -160,7 +153,6 @@ class State:
             stdscr.refresh()
         curses.nocbreak()
         stdscr.keypad(False)
-        curses.echo()
         return b"\n".join([s.encode('utf-8') for s in multiline_input])
 
 class LeafProtocol(Protocol):
@@ -222,7 +214,7 @@ class Synchronizer():
             
     # Really...
     def query_peer(self, key):
-        with self.clientele_lock:
+        with self.clientele_lock: # Threading stuff may be the issue
             return self.clientele.get(key)
 
 class UltrapeerProtocol(Protocol):
@@ -246,21 +238,22 @@ class UltrapeerProtocol(Protocol):
 
     def dataReceived(self, data):
         client_info = str(self.transport.getPeer()).replace("IPv4Address(type='TCP', host='", "").replace("', port","").replace(")","").split("=")
+        logger.info(f"From:\n{client_info}\n{data.decode('utf-8')}")
         try:
             message = data.decode('utf-8')
             logger.info(f"Data received from {client_info}, prefix: {data.decode('utf-8').split("¬")[0]}")
             if message.startswith("CONNECT¬"):
                 # Handle client registration
                 client_keypair = message.split("¬")[1].removeprefix("b\'").removesuffix("\'").replace("\\n","\n")
-                #logger.info(f"Public key provided:\n{client_keypair}") # For debug purposes, so i can differentiate between em
                 synchronizer.add_peer(message.split("¬")[1], (client_info[0], int(client_info[1])))
                 self.transport.write(f"CONNECTED¦".encode('utf-8')) # Replace with an identity to prepend
             if message.startswith("QUERY¬"):
                 logger.info(f"Client requesting to query: {client_info}")
                 self.transport.write(f"GIMME¦".encode('utf-8')) # Replace with an identity to prepend
             if message.startswith("QUERYPUBKEY¬"):
-                logger.info(f"Pubkey provided by client: {client_info}")
-                self.transport.write(f"HEREYAGO¦{synchronizer.query_peer(message.split("¬")[1])}".encode('utf-8'))
+                pubkey = message.split("¬")[1]
+                address = synchronizer.query_peer(pubkey)
+                self.transport.write(f"HEREYAGO¦{address}".encode('utf-8'))
         except Exception as e:
             logger.error(f"Error processing data: {e}")
 
@@ -303,10 +296,11 @@ class SSLContextFactory(ssl.ContextFactory):
 
 class P2PProtocol(Protocol):
     def connectionMade(self):
-        global_stdscr.addstr("Connection made")
+        global_stdscr.addstr("Connection made\n")
         state.connected_to_leaf = True
         self.factory.client_instance = self
-        state.tui()
+        self.transport.write("Connection established".encode('utf-8'))
+        # state.tui()
         # self.transport.write(f"PING¦¬¦{input(">> ")}".encode('utf-8'))
 
     def dataReceived(self, data):
@@ -361,6 +355,7 @@ def main(stdscr):
             global state
             global keypair
             global factory
+            stdscr.scrollok(True)
             keypair = RSA.generate(2048)
             logging.basicConfig(
                 level=logging.INFO,

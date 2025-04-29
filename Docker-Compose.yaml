@@ -8,27 +8,38 @@ services:
     volumes:
       - ./traffic_capture:/traffic_capture
 
-  node_1:
+  ultrapeer_1:
     build:
       context: .
       dockerfile: node_dockerfile
+    stdin_open: true
+    tty: true
     networks:
       - p2p_network
-    volumes:
-      - ./terminal_output:/terminal_output
     command: >
-      bash -c "source venv/bin/activate && python secure_file_sender.py --mode ultrapeer > /terminal_output/node_1_output.txt 2>&1"
+      bash -c "python secure_file_sender.py --mode ultrapeer"
 
-  node_2:
+  leaf_1:
     build:
       context: .
       dockerfile: node_dockerfile
+    stdin_open: true
+    tty: true
     networks: 
       - p2p_network
-    volumes:
-      - ./terminal_output:/terminal_output
     command: >
-      bash -c "source venv/bin/activate && python secure_file_sender.py --mode leaf --ultrapeer node_1:8000 > /terminal_output/node_2_output.txt 2>&1"
+      bash -c "python secure_file_sender.py --mode leaf --ultrapeer ultrapeer_1"
+
+  leaf_2:
+    build:
+      context: .
+      dockerfile: node_dockerfile
+    stdin_open: true
+    tty: true
+    networks: 
+      - p2p_network
+    command: >
+      bash -c "python secure_file_sender.py --mode leaf --ultrapeer ultrapeer_1"
 
 networks:
   p2p_network:

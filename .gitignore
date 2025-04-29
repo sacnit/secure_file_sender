@@ -82,3 +82,8 @@ dmypy.json
 
 # profiling data
 .prof
+
+
+# Added by cargo
+
+/target

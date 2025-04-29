@@ -1,8 +1,27 @@
-2025-04-28 18:15:41 [INFO] Starting secure server on port 9999...
-2025-04-28 18:15:44 [INFO] Connection established with client: 127.0.0.1:60790
-2025-04-28 18:15:44 [INFO] Data received from ['127.0.0.1', '60790'], prefix: CONNECT
-2025-04-28 18:15:46 [INFO] Data received from ['127.0.0.1', '60790'], prefix: QUERY
-2025-04-28 18:15:46 [INFO] Client requesting to query: ['127.0.0.1', '60790']
-2025-04-28 18:15:50 [INFO] Data received from ['127.0.0.1', '60790'], prefix: QUERYPUBKEY
-2025-04-28 18:15:50 [INFO] Pubkey provided by client: ['127.0.0.1', '60790']
-2025-04-28 18:16:19 [INFO] Client at address disconnected:  host='127.0.0.1: port=60790
+2025-04-29 16:51:45 [INFO] Starting secure server on port 9999...
+2025-04-29 16:51:47 [INFO] Connection established with client: 127.0.0.1:38266
+2025-04-29 16:51:47 [INFO] From:
+['127.0.0.1', '38266']
+CONNECT¬b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA09Ljtmfq46xdiyovGZfS\nA9uq2yQAB7gRsWoDTmS2bnZVy1TEIqV5JTeAN0EnWdDcbhzYk8oH9aNz7aQ8Bczj\noFeI+4Q6ioSFXyuGzkLonVGQxnzRxLm2qW5k/Gx/09+n3FOXKKKPlYlbAgUDgtnI\nJzqgfkBb1HhQg2VkywlHpVR6QUQyOI+zIi6jmh2oHldPDd4lzXRLEpfHXrnAmj1t\nHac43AVpDhiAYIHo2WChxX0VbaB5Q3daTBn45J3YcJNAH8eapHx9TLTAvi5wGdPE\nTS8JCX9IZVo4fMtU7GC/46O9j5kZ81/smCERnOmKJz9TZc7v7xJBkDFNQJHiSjc4\nQQIDAQAB\n-----END PUBLIC KEY-----'
+2025-04-29 16:51:47 [INFO] Data received from ['127.0.0.1', '38266'], prefix: CONNECT
+2025-04-29 16:51:51 [INFO] Connection established with client: 127.0.0.1:38268
+2025-04-29 16:51:51 [INFO] From:
+['127.0.0.1', '38268']
+CONNECT¬b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2nhXnoBa3qActAQq1zr/\njoxQlo6BaduB0OctnsmJpaUYgP9N5fQOznR9Mdy6JkVKNBpiso6H8N78ZvAWPFOR\nAbV/qK+R3oF0X0Hmbc2mGgzBE8dJEwUwJWchpSPi/V5nWgzecoen+N3fxBLSz7kU\nFge3v8Yc6NLIvMPvVfFem5/hipJJT+0UGjIcyje85ZcAIoP0MpJwpD5S8RlOJjRr\nnB0re+KoBK/v6KILpnZ37OgdmImhygI1JwCqvr7i25klKu74pTSpdP4ASPDiZh9K\nedUd5qxb8vP1I606gIHCwydci44WSQ24Hfr3d7IDsRDu4PAIYyGcnUT+eUJDDp7B\njQIDAQAB\n-----END PUBLIC KEY-----'
+2025-04-29 16:51:51 [INFO] Data received from ['127.0.0.1', '38268'], prefix: CONNECT
+2025-04-29 16:51:58 [INFO] From:
+['127.0.0.1', '38266']
+QUERY¬
+2025-04-29 16:51:58 [INFO] Data received from ['127.0.0.1', '38266'], prefix: QUERY
+2025-04-29 16:51:58 [INFO] Client requesting to query: ['127.0.0.1', '38266']
+2025-04-29 16:51:59 [INFO] From:
+['127.0.0.1', '38266']
+QUERYPUBKEY¬b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2nhXnoBa3qActAQq1zr/\njoxQlo6BaduB0OctnsmJpaUYgP9N5fQOznR9Mdy6JkVKNBpiso6H8N78ZvAWPFOR\nAbV/qK+R3oF0X0Hmbc2mGgzBE8dJEwUwJWchpSPi/V5nWgzecoen+N3fxBLSz7kU\nFge3v8Yc6NLIvMPvVfFem5/hipJJT+0UGjIcyje85ZcAIoP0MpJwpD5S8RlOJjRr\nnB0re+KoBK/v6KILpnZ37OgdmImhygI1JwCqvr7i25klKu74pTSpdP4ASPDiZh9K\nedUd5qxb8vP1I606gIHCwydci44WSQ24Hfr3d7IDsRDu4PAIYyGcnUT+eUJDDp7B\njQIDAQAB\n-----END PUBLIC KEY-----'
+2025-04-29 16:51:59 [INFO] Data received from ['127.0.0.1', '38266'], prefix: QUERYPUBKEY
+2025-04-29 16:52:18 [INFO] From:
+['127.0.0.1', '38268']
+QUERY¬
+2025-04-29 16:52:18 [INFO] Data received from ['127.0.0.1', '38268'], prefix: QUERY
+2025-04-29 16:52:18 [INFO] Client requesting to query: ['127.0.0.1', '38268']
+2025-04-29 16:54:19 [INFO] Client at address disconnected:  host='127.0.0.1: port=38268
+2025-04-29 16:58:58 [INFO] Client at address disconnected:  host='127.0.0.1: port=38266
