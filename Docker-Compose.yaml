@@ -16,6 +16,8 @@ services:
     tty: true
     networks:
       - p2p_network
+    volumes:
+      - ./logs:/app/logs
     command: >
       bash -c "python secure_file_sender.py --mode ultrapeer"
 
@@ -27,6 +29,8 @@ services:
     tty: true
     networks: 
       - p2p_network
+    volumes:
+      - ./logs:/app/logs
     command: >
       bash -c "python secure_file_sender.py --mode leaf --ultrapeer ultrapeer_1"
 
@@ -38,6 +42,8 @@ services:
     tty: true
     networks: 
       - p2p_network
+    volumes:
+      - ./logs:/app/logs
     command: >
       bash -c "python secure_file_sender.py --mode leaf --ultrapeer ultrapeer_1"
 
