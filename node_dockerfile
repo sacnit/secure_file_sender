@@ -8,7 +8,10 @@ COPY requirements.txt .
 
 RUN pip install --requirement requirements.txt
 
-# Copy your script into the container
 COPY secure_file_sender.py .
+COPY secure_file_sender_Communication.py .
+COPY secure_file_sender_Leaf.py .
+COPY secure_file_sender_TUI.py .
+COPY secure_file_sender_Ultrapeer.py .
 
 CMD ["python", "secure_file_sender.py"]
