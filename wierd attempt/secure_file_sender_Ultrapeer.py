@@ -6,29 +6,31 @@ from OpenSSL import crypto, SSL
 import warnings
 
 class UltrapeerProtocol(Protocol):
-    def __init__(self, factory):
+    def __init__(self, factory, state):
         self.factory = factory
         self.logger = factory.logger
+        self.state = state
         
     def connectionMade(self):
+        self.transport.write("kachigger".encode("'utf-8"))
         pass
 
     def connectionLost(self, reason):
         pass
 
     def dataReceived(self, data):
+        print("<<", data.decode('utf-8'))
         pass
     
 class UltrapeerFactory(Factory):
     protocol = UltrapeerProtocol
     
-    def __init__(self, logger):
-        self.logger = logger    
-
+    def __init__(self, logger, state):
+        self.logger = logger
+        self.state = state
+        
     def buildProtocol(self, addr):
-        protocol = UltrapeerFactory.buildProtocol(self, addr)
-        protocol.factory = self
-        return protocol
+        return UltrapeerProtocol(self, self.state)
 
 class SSLContextFactory(ssl.ContextFactory):
     def __init__(self):

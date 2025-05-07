@@ -1,0 +1,12 @@
+2025-05-07 04:53:05 [INFO] (MainThread) Listening for P2P connections on port 6770 (SSL).
+2025-05-07 04:53:05 [INFO] (MainThread) Connecting to ultrapeer 127.0.0.1:9999 (SSL).
+2025-05-07 04:53:05 [INFO] (PoolThread-twisted.internet.reactor-0) Input thread started. Waiting for connection to ultrapeer...
+2025-05-07 04:53:05 [INFO] (MainThread) Connection established to ultrapeer.
+2025-05-07 04:53:05 [INFO] (MainThread) Sent: Registration¬|¬b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnTUSUJ8kCiYyXFcEj68N\n3ducZeqlGcgLJ8bfALznZcMGHBxxljQkrzs4lfYMr/6nU3igCTp7AX3WCrPmugnC\nj+7mbdmOIRS9aA6Pfhc8LMvPr2vph+4MIIYy68xiyRbOl/cKLijipy8b7Wtx/lzx\n+EHock7U+St3E4roAUkjV45yYJUBs36nAyUdpcBEZlQkmFnFYuUo+/SGwCYK7UEX\nJmI1/AxqR6cPOEKb8g7H3IXJyMVdwLZUdPo6kZ4+cxLovXO+s1H7P0gJWfmmMU1a\nFP4kvLBbElyP0rsM+G6s5chb9J1udQ3ZHCAvYRfncRuZYDf4nstkyCoxGTI9fOa0\ntwIDAQAB\n-----END PUBLIC KEY-----'¬|¬6770
+2025-05-07 04:53:05 [INFO] (PoolThread-twisted.internet.reactor-0) Connection to ultrapeer ready. Starting input prompt.
+2025-05-07 04:53:20 [INFO] (MainThread) Sent: Query¬¬|b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlghrXx9aMDlGjHVC6+x2\nn0WBpPpvh46BhBkhQhgtkj4OyWzEQ587fTL/dVfhZT/LZh8rFHOKW/zFBUJ9NbaF\njZa0LezSgbXth136lVYcglwGCqAcT/zwkHktBu1uifeQVTTKjk7jEMWECaZMlSeQ\np9OZKvCtfyupkaup/lPwfLVjN+OukdFndcdQe1Lilkv5JGrpBV8UGLuYd2eml05d\n/S8deN9d1rr2rEiwBa/Br0b5IYT+d++6apIvGqeZck0SXbW/84/+5T8wCMGaPNGK\n6VYFWiu8UG27l3rVKSHmnbsAr6eBHTBUQOyVqrfvPZZ/xg0q2AfVdgEHZfU+EP99\n/wIDAQAB\n-----END PUBLIC KEY-----'
+2025-05-07 04:53:25 [INFO] (PoolThread-twisted.internet.reactor-0) Attempting P2P connection to 127.0.0.1:6958 with key b'-----BEGIN PUBLIC ...
+2025-05-07 04:53:25 [INFO] (MainThread) P2P connection established.
+2025-05-07 04:53:25 [INFO] (MainThread) P2P Sent: Cze\u015b\u0107||b'-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlghrXx9aMDlGjHVC6+x2\nn0WBpPpvh46BhBkhQhgtkj4OyWzEQ587fTL/dVfhZT/LZh8rFHOKW/zFBUJ9NbaF\njZa0LezSgbXth136lVYcglwGCqAcT/zwkHktBu1uifeQVTTKjk7jEMWECaZMlSeQ\np9OZKvCtfyupkaup/lPwfLVjN+OukdFndcdQe1Lilkv5JGrpBV8UGLuYd2eml05d\n/S8deN9d1rr2rEiwBa/Br0b5IYT+d++6apIvGqeZck0SXbW/84/+5T8wCMGaPNGK\n6VYFWiu8UG27l3rVKSHmnbsAr6eBHTBUQOyVqrfvPZZ/xg0q2AfVdgEHZfU+EP99\n/wIDAQAB\n-----END PUBLIC KEY-----'
+2025-05-07 04:53:40 [INFO] (MainThread) P2P Sent: Plik?||../README.md
+2025-05-07 04:53:40 [INFO] (MainThread) P2P Sent: send ../README.md

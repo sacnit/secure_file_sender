@@ -1,26 +1,28 @@
 from twisted.internet.protocol import Protocol, ClientFactory
 
-class LeafProtocol(Protocol):
-    def __init__(self, factory):
+class CommunicationProtocol(Protocol):
+    def __init__(self, factory, state):
         self.factory = factory
         self.logger = factory.logger
+        self.state = state
     
     def connectionMade(self):
         pass
 
     def dataReceived(self, data):
+        data_decoded = data.decode('utf-8')
+        print("<< ", data_decoded)
         pass
             
-class LeafFactory(ClientFactory):
-    protocol = LeafProtocol
+class CommunicationFactory(ClientFactory):
+    protocol = CommunicationProtocol
 
-    def __init__(self, logger):
+    def __init__(self, logger, state):
         self.logger = logger
+        self.state = state
         
     def buildProtocol(self, addr):
-        protocol = ClientFactory.buildProtocol(self, addr)
-        protocol.factory = self
-        return protocol
+        return CommunicationProtocol(self, self.state)
 
     def clientConnectionFailed(self, connector, reason):
         pass
