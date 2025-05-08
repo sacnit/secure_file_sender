@@ -1,4 +1,3 @@
-# This needs to be the combination of both files, maybe just fucking passing shit to both files
 import argparse
 import ultrapeer as up
 import leaf as l

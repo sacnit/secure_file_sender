@@ -2,20 +2,23 @@ import argparse
 import logging
 import os
 import time
-from twisted.internet.protocol import Protocol, Factory
+from twisted.internet.protocol import Protocol, Factory, ReconnectingClientFactory
 from twisted.internet import reactor, ssl
 from OpenSSL import crypto, SSL
 import warnings
 import threading
 import hashlib
 import json
+import socket
 
 # Configure logging
 global logger
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+    datefmt="%Y-%m-%d %H:%M:%S",
+    filename=f"./logs/{socket.gethostname()}.log",
+    filemode="w"
 )
 logger = logging.getLogger(__name__)
 
@@ -64,13 +67,13 @@ class ForestProtocol(Protocol):
     def sendMessage(self, data):
         self.transport.write(data.encode('utf-8'))
 
-class ForestFactory(Factory):
+class ForestFactory(ReconnectingClientFactory):
     def __init__(self):
         self.trees = []
     
     def broadcast_change(self):
         for tree in self.trees:
-            tree.sendMessage(f"¬{forest.get_serialized()}") # Much simple just to resend the entire fucking dictionary
+            tree.sendMessage(f"¬{forest.get_serialized()}") # Much simple just to resend the entire dictionary
     
     def buildProtocol(self, addr):
         return ForestProtocol(self)
@@ -97,9 +100,9 @@ class UltrapeerProtocol(Protocol):
                     logger.info(f"Removing client with public key: {public_key[88:108]}")
                     del forest.forest[public_key]
                     break
-        #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # Error handling needed here
-        #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        
+        
+        
         except Exception as e:
             logger.error(f"Error removing client: {e}")
 
@@ -114,9 +117,9 @@ class UltrapeerProtocol(Protocol):
         try:
             time.sleep(2)
             self.transport.write(data.encode('utf-8'))
-        #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # Error handling needed here
-        #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        
+        
+        
         except Exception as e:
             logger.error(f"Error sending data: {e}")
 
@@ -140,9 +143,9 @@ class UltrapeerProtocol(Protocol):
                 forest_factory.broadcast_change()
                 logger.info(f"Registered: {leaf.host}:{public_key[88:108]}")
                 self.transport.write(f"You are at {str(leaf.host)}".encode('utf-8'))
-            #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            # Error handling needed here
-            #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            
+            
+            
             except IndexError:
                 logger.error(f"Registration message format error from {leaf.host}: {decoded}")
             except Exception as e:
@@ -155,9 +158,9 @@ class UltrapeerProtocol(Protocol):
                 response_ip = forest.forest[public_key]["ip"]
                 response_port = forest.forest[public_key]["port"]
                 self.transport.write(f"Response||¬{public_key}||¬{response_ip}||¬{response_port}".encode('utf-8'))
-            #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            # Error handling needed here
-            #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            
+            
+            
             except KeyError:
                 logger.warning(f"Query for unknown public key: {public_key[88:108]} from {self.transport.getPeer().host}")
                 self.transport.write(f"Error||¬{public_key}||¬Unknown".encode('utf-8'))
@@ -177,9 +180,9 @@ class SSLFactory(ssl.ContextFactory):
         key = crypto.PKey()
         try:
             key.generate_key(crypto.TYPE_RSA, 2048)
-        #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # Error handling needed here
-        #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        
+        
+        
         except Exception as e:
             logger.error(f"Error generating private key: {e}")
             raise
@@ -193,9 +196,9 @@ class SSLFactory(ssl.ContextFactory):
         cert.set_pubkey(key)
         try:
             cert.sign(key, "sha256")
-        #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # Error handling needed here
-        #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        
+        
+        
         except Exception as e:
             logger.error(f"Error signing certificate: {e}")
             raise
@@ -216,9 +219,9 @@ class SSLFactory(ssl.ContextFactory):
                 #     SSL.VERIFY_PEER | SSL.VERIFY_CLIENT_ONCE | SSL.VERIFY_FAIL_IF_NO_PEER_CERT
                 # )
             return ctx
-        #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        # Error handling needed here
-        #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        
+        
+        
         except Exception as e:
             logger.error(f"Error creating SSL context: {e}")
             raise
@@ -258,9 +261,9 @@ def main(ultrapeer, uport, join, port, fport, certificate):
         ultrapeer_factory = UltrapeerFactory()
         reactor.listenSSL(port, ultrapeer_factory, ssl_factory)
         reactor.run()
-    #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # Error handling needed here
-    #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    
+    
+    
     except Exception as e:
         logger.critical(f"Failed to start the server: {e}")
         

@@ -10,9 +10,10 @@ from OpenSSL import crypto, SSL
 import warnings
 import os
 from twisted.internet import reactor, ssl, threads
-from twisted.internet.protocol import Protocol, ClientFactory, Factory
+from twisted.internet.protocol import Protocol, ClientFactory, Factory, ReconnectingClientFactory
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
+import socket
 
 # logging stuff, this should be removed in release
 global logger
@@ -20,7 +21,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] (%(threadName)s) %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    filename=str(os.getpid()),
+    filename=f"./logs/{socket.gethostname()}.log",
     filemode="w"
 )
 logger = logging.getLogger(__name__)
@@ -252,7 +253,7 @@ class LeafProtocol(Protocol):
             self.factory.client_instance = None
         self.factory.signal_input_thread_shutdown()
 
-class LeafFactory(ClientFactory):
+class LeafFactory(ReconnectingClientFactory):
     protocol = LeafProtocol
 
     def __init__(self):
@@ -506,7 +507,7 @@ def main(ultrapeer, port, certificate):
         except:
             print(f"Invalid SSL certificate directory {certificate}\nPlease make sure it contains both `cert.crt` and `key.key` and that they are a valid SSL certificate and key")
             os._exit(1)
-    reactor.listenSSL(p2p_port, p2p_factory_listen, ssl_factory)
+    reactor.listenSSL(p2p_port, p2p_factory_listen, ssl_factory, interface="0.0.0.0")
     logger.info(f"Listening for P2P connections on port {p2p_port} (SSL).")
 
     reactor.connectSSL(ultrapeer, port, factory, ssl_factory)

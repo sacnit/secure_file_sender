@@ -19,7 +19,7 @@ services:
     volumes:
       - ./logs:/app/logs
     command: >
-      bash -c "python secure_file_sender.py --mode ultrapeer"
+      bash -c "python sfs.py --mode ultrapeer --forest-port 4441"
 
   leaf_1:
     build:
@@ -32,7 +32,7 @@ services:
     volumes:
       - ./logs:/app/logs
     command: >
-      bash -c "python secure_file_sender.py --mode leaf --ultrapeer ultrapeer_1"
+      bash -c "python sfs.py --ultrapeer ultrapeer_1"
 
   leaf_2:
     build:
@@ -45,7 +45,46 @@ services:
     volumes:
       - ./logs:/app/logs
     command: >
-      bash -c "python secure_file_sender.py --mode leaf --ultrapeer ultrapeer_1"
+      bash -c "python sfs.py --ultrapeer ultrapeer_1"
+
+  ultrapeer_2:
+    build:
+      context: .
+      dockerfile: node_dockerfile
+    stdin_open: true
+    tty: true
+    networks:
+      - p2p_network
+    volumes:
+      - ./logs:/app/logs
+    command: >
+      bash -c "python sfs.py --mode ultrapeer --ultrapeer ultrapeer_1 --ultrapeer-port 4441 --port 9998 --join True"
+
+  leaf_3:
+    build:
+      context: .
+      dockerfile: node_dockerfile
+    stdin_open: true
+    tty: true
+    networks: 
+      - p2p_network
+    volumes:
+      - ./logs:/app/logs
+    command: >
+      bash -c "python sfs.py --ultrapeer ultrapeer_2 --port 9998"
+
+  leaf_4:
+    build:
+      context: .
+      dockerfile: node_dockerfile
+    stdin_open: true
+    tty: true
+    networks: 
+      - p2p_network
+    volumes:
+      - ./logs:/app/logs
+    command: >
+      bash -c "python sfs.py --ultrapeer ultrapeer_2 --port 9998"
 
 networks:
   p2p_network:
